@@ -1,0 +1,81 @@
+# Embrapa simplified textural grouping (Brazilian SiBCS).
+#
+# Five textural classes used in Brazilian soil surveys, defined by clay
+# percentage (with the silty-vs-sandy split among low-clay soils).
+# Particle-size cutoffs follow USDA: sand 0.05-2.0 mm; clay <0.002 mm.
+
+[meta]
+key = "EMBRAPA"
+axes = ["sand", "clay"]
+default_locale = "pt"
+reference = "Empresa Brasileira de Pesquisa Agropecuária (Embrapa). Sistema Brasileiro de Classificação de Solos (SiBCS), 5ª ed., 2018."
+url = "https://www.embrapa.br/solos/sibcs"
+description = "Brazilian simplified textural grouping used in SiBCS soil surveys: five classes from very clayey to silty, indexed primarily by clay percentage."
+
+[meta.names]
+pt = "Embrapa (SiBCS)"
+en = "Embrapa (SiBCS)"
+fr = "Embrapa (SiBCS)"
+de = "Embrapa (SiBCS)"
+es = "Embrapa (SiBCS)"
+ru = "Embrapa (SiBCS)"
+
+[[class]]
+key = "muito_argilosa"
+group = "fine"
+vertices = [[0, 60], [40, 60], [0, 100]]
+[class.names]
+pt = "muito argilosa"
+en = "very clayey"
+fr = "très argileuse"
+de = "sehr tonig"
+es = "muy arcillosa"
+ru = "очень тяжёлая (глина)"
+
+[[class]]
+key = "argilosa"
+group = "fine"
+vertices = [[0, 35], [65, 35], [40, 60], [0, 60]]
+[class.names]
+pt = "argilosa"
+en = "clayey"
+fr = "argileuse"
+de = "tonig"
+es = "arcillosa"
+ru = "глинистая"
+
+[[class]]
+key = "media"
+group = "medium"
+vertices = [[0, 15], [85, 15], [65, 35], [0, 35]]
+[class.names]
+pt = "média"
+en = "medium"
+fr = "moyenne"
+de = "mittel"
+es = "media"
+ru = "среднесуглинистая"
+
+[[class]]
+key = "arenosa"
+group = "coarse"
+vertices = [[25, 0], [100, 0], [85, 15], [25, 15]]
+[class.names]
+pt = "arenosa"
+en = "sandy"
+fr = "sableuse"
+de = "sandig"
+es = "arenosa"
+ru = "песчаная"
+
+[[class]]
+key = "siltosa"
+group = "medium"
+vertices = [[0, 0], [25, 0], [25, 15], [0, 15]]
+[class.names]
+pt = "siltosa"
+en = "silty"
+fr = "silteuse"
+de = "schluffig"
+es = "limosa"
+ru = "пылеватая"

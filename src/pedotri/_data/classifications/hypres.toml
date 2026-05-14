@@ -1,0 +1,89 @@
+# HYPRES — Hydraulic Properties of European Soils.
+#
+# Five textural classes used by the European HYPRES database and its
+# associated pedotransfer functions (Wösten et al. 1999). The class
+# boundaries are defined purely by clay and sand percentages, using the
+# USDA particle-size cutoffs (sand 0.05-2.0 mm; clay <0.002 mm).
+#
+# Class definitions (C = clay %, S = sand %):
+#   coarse:       C < 18% AND S > 65%
+#   medium:       (18% <= C < 35% AND S >= 15%) OR (C < 18% AND 15% <= S <= 65%)
+#   medium fine:  C < 35% AND S < 15%
+#   fine:         35% <= C < 60%
+#   very fine:    C >= 60%
+
+[meta]
+key = "HYPRES"
+axes = ["sand", "clay"]
+default_locale = "en"
+reference = "Wösten, J.H.M., Lilly, A., Nemes, A., Le Bas, C. (1999). Development and use of a database of hydraulic properties of European soils. Geoderma 90(3-4): 169-185."
+url = "https://www.sciencedirect.com/science/article/pii/S0016706198001324"
+description = "European five-class textural grouping used as the basis for HYPRES pedotransfer functions. Particle-size cutoffs: sand 0.05-2.0 mm; clay <0.002 mm."
+
+[meta.names]
+en = "HYPRES"
+fr = "HYPRES"
+de = "HYPRES"
+es = "HYPRES"
+ru = "HYPRES"
+pt = "HYPRES"
+
+[[class]]
+key = "coarse"
+group = "coarse"
+vertices = [[65, 0], [100, 0], [82, 18], [65, 18]]
+[class.names]
+en = "coarse"
+fr = "grossière"
+de = "grob"
+es = "gruesa"
+ru = "лёгкая"
+pt = "grossa"
+
+[[class]]
+key = "medium"
+group = "medium"
+vertices = [[15, 0], [65, 0], [65, 18], [82, 18], [65, 35], [15, 35]]
+[class.names]
+en = "medium"
+fr = "moyenne"
+de = "mittel"
+es = "media"
+ru = "средняя"
+pt = "média"
+
+[[class]]
+key = "medium_fine"
+group = "moderately_fine"
+vertices = [[0, 0], [15, 0], [15, 35], [0, 35]]
+[class.names]
+en = "medium fine"
+fr = "moyenne fine"
+de = "mittel-fein"
+es = "media fina"
+ru = "средне-тяжёлая"
+pt = "média fina"
+
+[[class]]
+key = "fine"
+group = "fine"
+vertices = [[0, 35], [65, 35], [40, 60], [0, 60]]
+[class.names]
+en = "fine"
+fr = "fine"
+de = "fein"
+es = "fina"
+ru = "тяжёлая"
+pt = "fina"
+
+[[class]]
+key = "very_fine"
+group = "fine"
+vertices = [[0, 60], [40, 60], [0, 100]]
+[class.names]
+en = "very fine"
+fr = "très fine"
+de = "sehr fein"
+es = "muy fina"
+ru = "очень тяжёлая"
+pt = "muito fina"

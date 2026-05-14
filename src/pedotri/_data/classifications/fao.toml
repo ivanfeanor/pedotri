@@ -1,0 +1,57 @@
+# FAO simplified soil texture classification.
+#
+# Three broad classes (fine / medium / coarse) used for global soil
+# survey and irrigation suitability work.
+# Particle-size fractions: sand 0.05-2.0 mm; clay <0.002 mm.
+
+[meta]
+key = "FAO"
+axes = ["sand", "clay"]
+default_locale = "en"
+reference = "Verheye, W. and Ameryckx, J. (1984). Mineral fractions and classification of soil texture. Pedologie 34(2): 215-225. Adopted by FAO for global soil texture mapping."
+url = "https://www.fao.org/soils-portal/"
+description = "FAO coarse / medium / fine grouping used in global soil maps and FAO-UNESCO soil classifications. Useful when finer detail than the 12-class USDA system isn't warranted."
+
+[meta.names]
+en = "FAO"
+fr = "FAO"
+de = "FAO"
+es = "FAO"
+ru = "ФАО"
+pt = "FAO"
+
+[[class]]
+key = "fine"
+group = "fine"
+vertices = [[0, 100], [65, 35], [0, 35]]
+[class.names]
+en = "fine"
+fr = "fine"
+de = "fein"
+es = "fina"
+ru = "тяжёлая"
+pt = "fina"
+
+[[class]]
+key = "medium"
+group = "medium"
+vertices = [[0, 35], [65, 35], [82, 18], [68, 18], [68, 0], [0, 0]]
+[class.names]
+en = "medium"
+fr = "moyenne"
+de = "mittel"
+es = "media"
+ru = "средняя"
+pt = "média"
+
+[[class]]
+key = "coarse"
+group = "coarse"
+vertices = [[82, 18], [100, 0], [68, 0], [68, 18]]
+[class.names]
+en = "coarse"
+fr = "grossière"
+de = "grob"
+es = "gruesa"
+ru = "лёгкая"
+pt = "grossa"

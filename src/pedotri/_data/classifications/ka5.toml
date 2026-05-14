@@ -1,0 +1,408 @@
+# KA5 — Bodenkundliche Kartieranleitung, 5. Auflage (2005).
+#
+# Full 31-class German pedological texture classification. Class
+# definitions are given in the KA5 reference as clay and silt percent
+# ranges; the polygons below convert each rectangular (clay, silt)
+# region into the equivalent (sand, clay) polygon (sand = 100 - clay -
+# silt) clipped to the sand-silt-clay simplex.
+#
+# Class groups by initial letter:
+#   S* — Sande (sands)
+#   L* — Lehme (loams)
+#   U* — Schluffe (silts)
+#   T* — Tone (clays)
+
+[meta]
+key = "KA5"
+axes = ["sand", "clay"]
+default_locale = "de"
+reference = "Ad-hoc-AG Boden (2005). Bodenkundliche Kartieranleitung, 5. Auflage (KA5). Hannover: Bundesanstalt für Geowissenschaften und Rohstoffe & Staatliche Geologische Dienste der Bundesländer."
+description = "German Soil Mapping Guide (Kartieranleitung 5), 2005. Full 31-class textural classification used by BGR and the German state geological surveys."
+
+[meta.names]
+de = "KA5 (Bodenkundliche Kartieranleitung 5)"
+en = "KA5 (German Soil Mapping Guide, 5th ed.)"
+fr = "KA5 (cartographie des sols, Allemagne)"
+es = "KA5 (cartografía de suelos, Alemania)"
+ru = "KA5 (немецкая почвенная классификация)"
+pt = "KA5 (cartografia de solos, Alemanha)"
+
+# ============================ SANDS (S*) =================================
+
+[[class]]
+key = "Ss"
+group = "coarse"
+vertices = [[90, 0], [100, 0], [95, 5], [85, 5]]
+[class.names]
+de = "Reinsand"
+en = "pure sand"
+fr = "sable pur"
+es = "arena pura"
+ru = "чистый песок"
+pt = "areia pura"
+
+[[class]]
+key = "Su2"
+group = "coarse"
+vertices = [[75, 0], [90, 0], [85, 5], [70, 5]]
+[class.names]
+de = "schwach schluffiger Sand"
+en = "weakly silty sand"
+fr = "sable faiblement silteux"
+es = "arena débilmente limosa"
+ru = "слабо пылеватый песок"
+pt = "areia fracamente siltosa"
+
+[[class]]
+key = "Su3"
+group = "moderately_coarse"
+vertices = [[60, 0], [75, 0], [67, 8], [52, 8]]
+[class.names]
+de = "mittel schluffiger Sand"
+en = "moderately silty sand"
+fr = "sable moyennement silteux"
+es = "arena moderadamente limosa"
+ru = "среднепылеватый песок"
+pt = "areia moderadamente siltosa"
+
+[[class]]
+key = "Su4"
+group = "moderately_coarse"
+vertices = [[50, 0], [60, 0], [52, 8], [42, 8]]
+[class.names]
+de = "stark schluffiger Sand"
+en = "strongly silty sand"
+fr = "sable fortement silteux"
+es = "arena fuertemente limosa"
+ru = "сильно пылеватый песок"
+pt = "areia fortemente siltosa"
+
+[[class]]
+key = "Slu"
+group = "medium"
+vertices = [[42, 8], [52, 8], [43, 17], [33, 17]]
+[class.names]
+de = "schluffig-lehmiger Sand"
+en = "silty-loamy sand"
+fr = "sable silto-limoneux"
+es = "arena limo-arcillosa"
+ru = "пылевато-лёгкий песок"
+pt = "areia silto-argilosa"
+
+[[class]]
+key = "Sl2"
+group = "moderately_coarse"
+vertices = [[70, 5], [85, 5], [82, 8], [67, 8]]
+[class.names]
+de = "schwach lehmiger Sand"
+en = "weakly loamy sand"
+fr = "sable faiblement limoneux"
+es = "arena débilmente franca"
+ru = "слабо суглинистый песок"
+pt = "areia fracamente franca"
+
+[[class]]
+key = "Sl3"
+group = "moderately_coarse"
+vertices = [[52, 8], [82, 8], [78, 12], [48, 12]]
+[class.names]
+de = "mittel lehmiger Sand"
+en = "moderately loamy sand"
+fr = "sable moyennement limoneux"
+es = "arena moderadamente franca"
+ru = "среднесуглинистый песок"
+pt = "areia moderadamente franca"
+
+[[class]]
+key = "Sl4"
+group = "moderately_coarse"
+vertices = [[48, 12], [78, 12], [73, 17], [43, 17]]
+[class.names]
+de = "stark lehmiger Sand"
+en = "strongly loamy sand"
+fr = "sable fortement limoneux"
+es = "arena fuertemente franca"
+ru = "сильно суглинистый песок"
+pt = "areia fortemente franca"
+
+[[class]]
+key = "St2"
+group = "moderately_coarse"
+vertices = [[85, 5], [95, 5], [83, 17], [73, 17]]
+[class.names]
+de = "schwach toniger Sand"
+en = "weakly clayey sand"
+fr = "sable faiblement argileux"
+es = "arena débilmente arcillosa"
+ru = "слабо глинистый песок"
+pt = "areia fracamente argilosa"
+
+[[class]]
+key = "St3"
+group = "medium_fine"
+vertices = [[68, 17], [83, 17], [75, 25], [60, 25]]
+[class.names]
+de = "mittel toniger Sand"
+en = "moderately clayey sand"
+fr = "sable moyennement argileux"
+es = "arena moderadamente arcillosa"
+ru = "среднеглинистый песок"
+pt = "areia moderadamente argilosa"
+
+# ============================ LOAMS (L*) =================================
+
+[[class]]
+key = "Ls2"
+group = "medium_fine"
+vertices = [[33, 17], [43, 17], [35, 25], [25, 25]]
+[class.names]
+de = "schwach sandiger Lehm"
+en = "weakly sandy loam"
+fr = "limon faiblement sableux"
+es = "franco débilmente arenoso"
+ru = "слабо песчаный суглинок"
+pt = "franco fracamente arenoso"
+
+[[class]]
+key = "Ls3"
+group = "medium_fine"
+vertices = [[43, 17], [53, 17], [45, 25], [35, 25]]
+[class.names]
+de = "mittel sandiger Lehm"
+en = "moderately sandy loam"
+fr = "limon moyennement sableux"
+es = "franco moderadamente arenoso"
+ru = "среднепесчаный суглинок"
+pt = "franco moderadamente arenoso"
+
+[[class]]
+key = "Ls4"
+group = "medium_fine"
+vertices = [[53, 17], [68, 17], [60, 25], [45, 25]]
+[class.names]
+de = "stark sandiger Lehm"
+en = "strongly sandy loam"
+fr = "limon fortement sableux"
+es = "franco fuertemente arenoso"
+ru = "сильно песчаный суглинок"
+pt = "franco fortemente arenoso"
+
+[[class]]
+key = "Lt2"
+group = "moderately_fine"
+vertices = [[25, 25], [45, 25], [35, 35], [15, 35]]
+[class.names]
+de = "schwach toniger Lehm"
+en = "weakly clayey loam"
+fr = "limon faiblement argileux"
+es = "franco débilmente arcilloso"
+ru = "слабо тяжёлый суглинок"
+pt = "franco fracamente argiloso"
+
+[[class]]
+key = "Lt3"
+group = "fine"
+vertices = [[15, 35], [35, 35], [25, 45], [5, 45]]
+[class.names]
+de = "mittel toniger Lehm"
+en = "moderately clayey loam"
+fr = "limon moyennement argileux"
+es = "franco moderadamente arcilloso"
+ru = "среднетяжёлый суглинок"
+pt = "franco moderadamente argiloso"
+
+[[class]]
+key = "Lts"
+group = "moderately_fine"
+vertices = [[45, 25], [60, 25], [40, 45], [25, 45]]
+[class.names]
+de = "sandig-toniger Lehm"
+en = "sandy-clayey loam"
+fr = "limon sablo-argileux"
+es = "franco areno-arcilloso"
+ru = "песчано-тяжёлый суглинок"
+pt = "franco areno-argiloso"
+
+[[class]]
+key = "Lu"
+group = "medium_fine"
+vertices = [[18, 17], [33, 17], [20, 30], [5, 30]]
+[class.names]
+de = "schluffiger Lehm"
+en = "silty loam"
+fr = "limon silteux"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+# ============================ SILTS (U*) =================================
+
+[[class]]
+key = "Us"
+group = "medium"
+vertices = [[20, 0], [50, 0], [42, 8], [12, 8]]
+[class.names]
+de = "sandiger Schluff"
+en = "sandy silt"
+fr = "silt sableux"
+es = "limo arenoso"
+ru = "песчаная пыль"
+pt = "silte arenoso"
+
+[[class]]
+key = "Uu"
+group = "medium"
+vertices = [[0, 0], [20, 0], [12, 8], [0, 8]]
+[class.names]
+de = "Reinschluff"
+en = "pure silt"
+fr = "silt pur"
+es = "limo puro"
+ru = "чистая пыль"
+pt = "silte puro"
+
+[[class]]
+key = "Ut2"
+group = "medium"
+vertices = [[0, 8], [27, 8], [23, 12], [0, 12]]
+[class.names]
+de = "schwach toniger Schluff"
+en = "weakly clayey silt"
+fr = "silt faiblement argileux"
+es = "limo débilmente arcilloso"
+ru = "слабо глинистая пыль"
+pt = "silte fracamente argiloso"
+
+[[class]]
+key = "Ut3"
+group = "medium_fine"
+vertices = [[0, 12], [23, 12], [18, 17], [0, 17]]
+[class.names]
+de = "mittel toniger Schluff"
+en = "moderately clayey silt"
+fr = "silt moyennement argileux"
+es = "limo moderadamente arcilloso"
+ru = "среднеглинистая пыль"
+pt = "silte moderadamente argiloso"
+
+[[class]]
+key = "Ut4"
+group = "medium_fine"
+vertices = [[0, 17], [18, 17], [10, 25], [0, 25]]
+[class.names]
+de = "stark toniger Schluff"
+en = "strongly clayey silt"
+fr = "silt fortement argileux"
+es = "limo fuertemente arcilloso"
+ru = "сильно глинистая пыль"
+pt = "silte fortemente argiloso"
+
+[[class]]
+key = "Uls"
+group = "medium"
+vertices = [[27, 8], [42, 8], [33, 17], [18, 17]]
+[class.names]
+de = "sandig-lehmiger Schluff"
+en = "sandy-loamy silt"
+fr = "silt sablo-limoneux"
+es = "limo areno-franco"
+ru = "песчано-суглинистая пыль"
+pt = "silte areno-franco"
+
+# ============================ CLAYS (T*) =================================
+
+[[class]]
+key = "Ts2"
+group = "fine"
+vertices = [[40, 45], [55, 45], [35, 65], [20, 65]]
+[class.names]
+de = "schwach sandiger Ton"
+en = "weakly sandy clay"
+fr = "argile faiblement sableuse"
+es = "arcilla débilmente arenosa"
+ru = "слабо песчаная глина"
+pt = "argila fracamente arenosa"
+
+[[class]]
+key = "Ts3"
+group = "fine"
+vertices = [[50, 35], [65, 35], [55, 45], [40, 45]]
+[class.names]
+de = "mittel sandiger Ton"
+en = "moderately sandy clay"
+fr = "argile moyennement sableuse"
+es = "arcilla moderadamente arenosa"
+ru = "среднепесчаная глина"
+pt = "argila moderadamente arenosa"
+
+[[class]]
+key = "Ts4"
+group = "moderately_fine"
+vertices = [[60, 25], [75, 25], [65, 35], [50, 35]]
+[class.names]
+de = "stark sandiger Ton"
+en = "strongly sandy clay"
+fr = "argile fortement sableuse"
+es = "arcilla fuertemente arenosa"
+ru = "сильно песчаная глина"
+pt = "argila fortemente arenosa"
+
+[[class]]
+key = "Tt"
+group = "fine"
+vertices = [[0, 65], [35, 65], [0, 100]]
+[class.names]
+de = "Reinton"
+en = "pure clay"
+fr = "argile pure"
+es = "arcilla pura"
+ru = "чистая глина"
+pt = "argila pura"
+
+[[class]]
+key = "Tl"
+group = "fine"
+vertices = [[25, 45], [40, 45], [20, 65], [5, 65]]
+[class.names]
+de = "lehmiger Ton"
+en = "loamy clay"
+fr = "argile limoneuse"
+es = "arcilla franca"
+ru = "суглинистая глина"
+pt = "argila franca"
+
+[[class]]
+key = "Tu2"
+group = "fine"
+vertices = [[0, 45], [25, 45], [5, 65], [0, 65]]
+[class.names]
+de = "schwach schluffiger Ton"
+en = "weakly silty clay"
+fr = "argile faiblement silteuse"
+es = "arcilla débilmente limosa"
+ru = "слабо пылеватая глина"
+pt = "argila fracamente siltosa"
+
+[[class]]
+key = "Tu3"
+group = "fine"
+vertices = [[5, 30], [20, 30], [5, 45], [0, 45], [0, 35]]
+[class.names]
+de = "mittel schluffiger Ton"
+en = "moderately silty clay"
+fr = "argile moyennement silteuse"
+es = "arcilla moderadamente limosa"
+ru = "среднепылеватая глина"
+pt = "argila moderadamente siltosa"
+
+[[class]]
+key = "Tu4"
+group = "medium_fine"
+vertices = [[0, 25], [10, 25], [0, 35]]
+[class.names]
+de = "stark schluffiger Ton"
+en = "strongly silty clay"
+fr = "argile fortement silteuse"
+es = "arcilla fuertemente limosa"
+ru = "сильно пылеватая глина"
+pt = "argila fortemente siltosa"

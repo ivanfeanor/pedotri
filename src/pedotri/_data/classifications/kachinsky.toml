@@ -1,0 +1,131 @@
+# Kachinsky soil texture classification (Качинский, 1965).
+#
+# Russian / post-Soviet classification by *physical clay* — the mass
+# fraction of particles smaller than 0.01 mm (rather than the 0.002 mm
+# clay cutoff used in USDA / FAO systems).
+#
+# Nine classes, indexed on the single axis "physical_clay". Class
+# boundaries follow the canonical Качинский (1965) scheme.
+
+[meta]
+key = "KACHINSKY"
+axes = ["physical_clay"]
+default_locale = "ru"
+reference = "Качинский Н.А. (1965). Физика почвы. Часть I. Москва: Высшая школа."
+description = "Soviet / Russian one-dimensional textural classification by physical-clay percentage (fraction <0.01 mm). The original reference: Kachinsky N.A. (1965), Soil Physics, Vol. I, Moscow."
+
+[meta.names]
+ru = "Классификация Качинского"
+en = "Kachinsky classification"
+fr = "classification de Katchinski"
+de = "Kačinskij-Klassifikation"
+es = "clasificación de Kachinsky"
+pt = "classificação de Katchinski"
+
+[[class]]
+key = "loose_sand"
+group = "coarse"
+interval = [0, 5]
+[class.names]
+ru = "песок рыхлый"
+en = "loose sand"
+fr = "sable meuble"
+de = "lockerer Sand"
+es = "arena suelta"
+pt = "areia solta"
+
+[[class]]
+key = "cohesive_sand"
+group = "coarse"
+interval = [5, 10]
+[class.names]
+ru = "песок связный"
+en = "cohesive sand"
+fr = "sable cohérent"
+de = "bindiger Sand"
+es = "arena cohesiva"
+pt = "areia coesa"
+
+[[class]]
+key = "sandy_loam"
+group = "moderately_coarse"
+interval = [10, 20]
+[class.names]
+ru = "супесь"
+en = "sandy loam"
+fr = "sable argileux"
+de = "anlehmiger Sand"
+es = "marga arenosa"
+pt = "areia franca"
+
+[[class]]
+key = "light_loam"
+group = "medium"
+interval = [20, 30]
+[class.names]
+ru = "суглинок лёгкий"
+en = "light loam"
+fr = "limon léger"
+de = "leichter Lehm"
+es = "franco ligero"
+pt = "franco leve"
+
+[[class]]
+key = "medium_loam"
+group = "medium"
+interval = [30, 40]
+[class.names]
+ru = "суглинок средний"
+en = "medium loam"
+fr = "limon moyen"
+de = "mittlerer Lehm"
+es = "franco medio"
+pt = "franco médio"
+
+[[class]]
+key = "heavy_loam"
+group = "moderately_fine"
+interval = [40, 50]
+[class.names]
+ru = "суглинок тяжёлый"
+en = "heavy loam"
+fr = "limon lourd"
+de = "schwerer Lehm"
+es = "franco pesado"
+pt = "franco pesado"
+
+[[class]]
+key = "light_clay"
+group = "fine"
+interval = [50, 65]
+[class.names]
+ru = "глина лёгкая"
+en = "light clay"
+fr = "argile légère"
+de = "leichter Ton"
+es = "arcilla ligera"
+pt = "argila leve"
+
+[[class]]
+key = "medium_clay"
+group = "fine"
+interval = [65, 80]
+[class.names]
+ru = "глина средняя"
+en = "medium clay"
+fr = "argile moyenne"
+de = "mittlerer Ton"
+es = "arcilla media"
+pt = "argila média"
+
+[[class]]
+key = "heavy_clay"
+group = "fine"
+interval = [80, 101]
+[class.names]
+ru = "глина тяжёлая"
+en = "heavy clay"
+fr = "argile lourde"
+de = "schwerer Ton"
+es = "arcilla pesada"
+pt = "argila pesada"

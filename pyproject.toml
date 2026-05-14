@@ -1,0 +1,171 @@
+[project]
+name = "pedotri"
+version = "0.1.0"
+description = "Modern, extensible soil texture classification and pedotransfer functions for Python"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [
+    { name = "Ivan Kolomiets", email = "ikolomiets@myeasyfarm.com" },
+]
+keywords = [
+    "soil",
+    "texture",
+    "classification",
+    "agronomy",
+    "pedology",
+    "agriculture",
+    "agritech",
+    "pedotransfer",
+    "USDA",
+    "FAO",
+    "GEPPA",
+    "Jamagne",
+    "Kachinsky",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Hydrology",
+    "Typing :: Typed",
+]
+dependencies = [
+    "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+matplotlib = ["matplotlib>=3.7"]
+plotly = ["plotly>=5.18"]
+pandas = ["pandas>=2.0"]
+polars = ["polars>=0.20"]
+all = [
+    "matplotlib>=3.7",
+    "plotly>=5.18",
+    "pandas>=2.0",
+    "polars>=0.20",
+]
+
+[project.scripts]
+pedotri = "pedotri.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/ikolomiets/pedotri"
+Repository = "https://github.com/ikolomiets/pedotri"
+Issues = "https://github.com/ikolomiets/pedotri/issues"
+Documentation = "https://ikolomiets.github.io/pedotri/"
+
+[build-system]
+requires = ["uv_build>=0.11.14,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "hypothesis>=6.100",
+    "ruff>=0.6",
+    "mypy>=1.10",
+    "matplotlib>=3.7",
+    "plotly>=5.18",
+    "pandas>=2.0",
+    "polars>=0.20",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.25",
+]
+
+[tool.uv.build-backend]
+module-name = "pedotri"
+module-root = "src"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",     # pycodestyle errors
+    "W",     # pycodestyle warnings
+    "F",     # pyflakes
+    "I",     # isort
+    "B",     # flake8-bugbear
+    "C4",    # flake8-comprehensions
+    "UP",    # pyupgrade
+    "N",     # pep8-naming
+    "RUF",   # ruff-specific
+    "SIM",   # flake8-simplify
+    "PT",    # pytest-style
+    "PTH",   # use pathlib
+    "TID",   # tidy imports
+    "TC",    # type-checking imports
+    "PERF",  # perflint
+    "FURB",  # refurb
+    "PL",    # pylint subset
+]
+ignore = [
+    "PLR0913",  # too many arguments
+    "PLR2004",  # magic value comparisons (frequent in geometry)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["PLR2004", "S101"]
+# Optional plotting backends deliberately defer their imports so the
+# heavy dependency is only paid for when the user calls the function.
+"src/pedotri/plot/__init__.py" = ["PLC0415"]
+"src/pedotri/plot/mpl.py" = ["PLC0415"]
+"src/pedotri/plot/plotly_backend.py" = ["PLC0415"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_unreachable = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_decorators = true
+disallow_any_generics = true
+show_error_codes = true
+files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = ["matplotlib.*", "plotly.*", "pandas.*", "polars.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--import-mode=importlib",
+]
+testpaths = ["tests"]
+xfail_strict = true
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["pedotri"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "\\.\\.\\.",
+]

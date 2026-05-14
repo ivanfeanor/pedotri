@@ -1,0 +1,205 @@
+# GEPPA-Jamagne — French soil texture triangle.
+#
+# Fourteen classes laid out on the sand-clay plane along the breakpoints
+# canonically used in French pedology (clay axis cuts at 7.5, 17.5, 30,
+# 45, 60 %; sand axis cuts at 30, 50, 65, 85 %). Triangle corners that
+# would exceed sand + clay = 100 % are clipped to the diagonal.
+#
+# This triangle is sometimes called the "GEPPA-Aisne" triangle after the
+# Groupe d'Étude des Problèmes de Pédologie Appliquée's Aisne working
+# group. The class codes follow the convention from Baize & Jamagne
+# (1995).
+
+[meta]
+key = "GEPPA"
+axes = ["sand", "clay"]
+default_locale = "fr"
+reference = "Jamagne, M. (1967). Bases et techniques d'une cartographie des sols. Annales agronomiques 18 (numéro spécial). Updated in Baize, D. & Jamagne, M. (1995). Référentiel pédologique. INRA, Paris."
+url = "https://www.afes.fr/"
+description = "French soil texture classification with 14 named classes covering the full sand-silt-clay simplex. Native locale is French; English glosses are provided as guidance and are not perfect equivalents (notably French 'limon' covers what USDA calls 'silt loam', not 'loam')."
+
+[meta.names]
+fr = "GEPPA-Jamagne"
+en = "GEPPA-Jamagne"
+de = "GEPPA-Jamagne"
+es = "GEPPA-Jamagne"
+ru = "GEPPA-Jamagne"
+pt = "GEPPA-Jamagne"
+
+# --- Argileux (clay-rich, clay >= 45%) -----------------------------------
+
+[[class]]
+key = "AA"
+group = "fine"
+vertices = [[0, 60], [40, 60], [0, 100]]
+[class.names]
+fr = "argile lourde"
+en = "heavy clay"
+de = "schwerer Ton"
+es = "arcilla pesada"
+ru = "тяжёлая глина"
+pt = "argila pesada"
+
+[[class]]
+key = "A"
+group = "fine"
+vertices = [[0, 45], [55, 45], [40, 60], [0, 60]]
+[class.names]
+fr = "argile"
+en = "clay"
+de = "Ton"
+es = "arcilla"
+ru = "глина"
+pt = "argila"
+
+# --- Argilo-X (clay 30-45%) ----------------------------------------------
+
+[[class]]
+key = "AL"
+group = "moderately_fine"
+vertices = [[0, 30], [50, 30], [50, 45], [0, 45]]
+[class.names]
+fr = "argile limoneuse"
+en = "silty clay"
+de = "schluffiger Ton"
+es = "arcilla limosa"
+ru = "пылеватая глина"
+pt = "argila siltosa"
+
+[[class]]
+key = "As"
+group = "moderately_fine"
+vertices = [[50, 30], [70, 30], [55, 45], [50, 45]]
+[class.names]
+fr = "argile sableuse"
+en = "sandy clay"
+de = "sandiger Ton"
+es = "arcilla arenosa"
+ru = "песчаная глина"
+pt = "argila arenosa"
+
+# --- Limon X (clay 17.5-30%) ---------------------------------------------
+
+[[class]]
+key = "LA"
+group = "medium_fine"
+vertices = [[0, 17.5], [50, 17.5], [50, 30], [0, 30]]
+[class.names]
+fr = "limon argileux"
+en = "silty clay loam"
+de = "schluffiger Tonlehm"
+es = "franco arcillo-limoso"
+ru = "пылеватый тяжёлый суглинок"
+pt = "franco argilo-siltoso"
+
+[[class]]
+key = "LAS"
+group = "medium_fine"
+vertices = [[50, 17.5], [65, 17.5], [65, 30], [50, 30]]
+[class.names]
+fr = "limon argilo-sableux"
+en = "sandy clay loam (silty)"
+de = "sandig-schluffiger Tonlehm"
+es = "franco arcillo-arenoso (limoso)"
+ru = "песчано-пылеватый тяжёлый суглинок"
+pt = "franco argilo-arenoso (siltoso)"
+
+[[class]]
+key = "SA"
+group = "medium_fine"
+vertices = [[65, 17.5], [82.5, 17.5], [70, 30], [65, 30]]
+[class.names]
+fr = "sablo-argileux"
+en = "sandy clay loam"
+de = "sandiger Lehm (tonreich)"
+es = "franco arcillo-arenoso"
+ru = "песчано-суглинистый"
+pt = "franco argilo-arenoso"
+
+# --- Limon (clay < 17.5%, varying sand) ----------------------------------
+
+[[class]]
+key = "L"
+group = "medium"
+vertices = [[0, 0], [30, 0], [30, 17.5], [0, 17.5]]
+[class.names]
+fr = "limon"
+en = "silt loam"
+de = "Schluff"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+[[class]]
+key = "LL"
+group = "medium"
+vertices = [[30, 7.5], [50, 7.5], [50, 17.5], [30, 17.5]]
+[class.names]
+fr = "limon moyen"
+en = "medium loam"
+de = "lehmiger Schluff"
+es = "franco medio"
+ru = "средний суглинок"
+pt = "franco médio"
+
+[[class]]
+key = "Ls"
+group = "medium"
+vertices = [[50, 7.5], [65, 7.5], [65, 17.5], [50, 17.5]]
+[class.names]
+fr = "limon sableux"
+en = "sandy silt loam"
+de = "sandiger Schluff"
+es = "franco limoso arenoso"
+ru = "песчано-пылеватый суглинок"
+pt = "franco siltoso arenoso"
+
+[[class]]
+key = "Sl"
+group = "moderately_coarse"
+vertices = [[65, 7.5], [92.5, 7.5], [82.5, 17.5], [65, 17.5]]
+[class.names]
+fr = "sable limono-argileux"
+en = "loamy sand (clay-bearing)"
+de = "schwach lehmiger Sand"
+es = "arena franca arcillosa"
+ru = "супесь с глиной"
+pt = "areia franca argilosa"
+
+# --- Sable (very low clay) -----------------------------------------------
+
+[[class]]
+key = "LS"
+group = "moderately_coarse"
+vertices = [[30, 0], [65, 0], [65, 7.5], [30, 7.5]]
+[class.names]
+fr = "limon sableux léger"
+en = "light sandy loam"
+de = "stark sandiger Lehm"
+es = "franco arenoso ligero"
+ru = "лёгкий песчаный суглинок"
+pt = "franco arenoso leve"
+
+[[class]]
+key = "SL"
+group = "coarse"
+vertices = [[65, 0], [85, 0], [85, 7.5], [65, 7.5]]
+[class.names]
+fr = "sable limoneux"
+en = "loamy sand"
+de = "lehmiger Sand"
+es = "arena franca"
+ru = "супесь"
+pt = "areia franca"
+
+[[class]]
+key = "S"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [92.5, 7.5], [85, 7.5]]
+[class.names]
+fr = "sable"
+en = "sand"
+de = "Sand"
+es = "arena"
+ru = "песок"
+pt = "areia"

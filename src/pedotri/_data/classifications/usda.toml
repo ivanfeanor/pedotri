@@ -1,0 +1,165 @@
+# USDA soil texture classification.
+#
+# Twelve classes defined by sand-clay percentages, used worldwide as the
+# de facto standard. Polygon vertices in (sand %, clay %) plane.
+# Silt is implicit: silt = 100 - sand - clay.
+
+[meta]
+key = "USDA"
+axes = ["sand", "clay"]
+default_locale = "en"
+reference = "Soil Survey Division Staff (1993). Soil Survey Manual. USDA Agriculture Handbook 18. U.S. Government Printing Office, Washington, DC."
+url = "https://www.nrcs.usda.gov/resources/guides-and-instructions/soil-survey-manual"
+description = "Standard USDA texture triangle: 12 classes covering the full sand-silt-clay simplex. The most widely used soil texture classification system worldwide. Particle-size fractions: sand 0.05-2.0 mm; silt 0.002-0.05 mm; clay <0.002 mm."
+
+[meta.names]
+en = "USDA"
+fr = "USDA"
+de = "USDA"
+es = "USDA"
+ru = "USDA"
+pt = "USDA"
+
+[[class]]
+key = "clay"
+group = "fine"
+vertices = [[0, 100], [0, 60], [20, 40], [45, 40], [45, 55]]
+[class.names]
+en = "clay"
+fr = "argile"
+de = "Ton"
+es = "arcilla"
+ru = "глина"
+pt = "argila"
+
+[[class]]
+key = "silty_clay"
+group = "fine"
+vertices = [[0, 60], [0, 40], [20, 40]]
+[class.names]
+en = "silty clay"
+fr = "argile limoneuse"
+de = "schluffiger Ton"
+es = "arcilla limosa"
+ru = "пылеватая глина"
+pt = "argila siltosa"
+
+[[class]]
+key = "silty_clay_loam"
+group = "moderately_fine"
+vertices = [[0, 40], [0, 27], [20, 27], [20, 40]]
+[class.names]
+en = "silty clay loam"
+fr = "limon argilo-silteux"
+de = "schluffiger Tonlehm"
+es = "franco arcillo-limoso"
+ru = "пылеватый тяжёлый суглинок"
+pt = "franco argilo-siltoso"
+
+[[class]]
+key = "sandy_clay"
+group = "fine"
+vertices = [[45, 55], [45, 35], [65, 35]]
+[class.names]
+en = "sandy clay"
+fr = "argile sableuse"
+de = "sandiger Ton"
+es = "arcilla arenosa"
+ru = "песчаная глина"
+pt = "argila arenosa"
+
+[[class]]
+key = "sandy_clay_loam"
+group = "moderately_fine"
+vertices = [[45, 35], [45, 27], [52, 20], [80, 20], [65, 35]]
+[class.names]
+en = "sandy clay loam"
+fr = "limon argilo-sableux"
+de = "sandiger Tonlehm"
+es = "franco arcillo-arenoso"
+ru = "песчаный тяжёлый суглинок"
+pt = "franco argilo-arenoso"
+
+[[class]]
+key = "clay_loam"
+group = "moderately_fine"
+vertices = [[20, 40], [20, 27], [45, 27], [45, 40]]
+[class.names]
+en = "clay loam"
+fr = "limon argileux"
+de = "Tonlehm"
+es = "franco arcilloso"
+ru = "тяжёлый суглинок"
+pt = "franco argiloso"
+
+[[class]]
+key = "silt"
+group = "medium"
+vertices = [[0, 12], [0, 0], [20, 0], [8, 12]]
+[class.names]
+en = "silt"
+fr = "silt"
+de = "Schluff"
+es = "limo"
+ru = "пыль"
+pt = "silte"
+
+[[class]]
+key = "silt_loam"
+group = "medium"
+vertices = [[8, 12], [20, 0], [50, 0], [23, 27], [0, 27], [0, 12]]
+[class.names]
+en = "silt loam"
+fr = "limon silteux"
+de = "schluffiger Lehm"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+[[class]]
+key = "loam"
+group = "medium"
+vertices = [[23, 27], [43, 7], [52, 7], [52, 20], [45, 27]]
+[class.names]
+en = "loam"
+fr = "limon"
+de = "Lehm"
+es = "franco"
+ru = "суглинок"
+pt = "franco"
+
+[[class]]
+key = "sand"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [90, 10]]
+[class.names]
+en = "sand"
+fr = "sable"
+de = "Sand"
+es = "arena"
+ru = "песок"
+pt = "areia"
+
+[[class]]
+key = "loamy_sand"
+group = "coarse"
+vertices = [[70, 0], [85, 0], [90, 10], [85, 15]]
+[class.names]
+en = "loamy sand"
+fr = "sable limoneux"
+de = "lehmiger Sand"
+es = "arena franca"
+ru = "супесь"
+pt = "areia franca"
+
+[[class]]
+key = "sandy_loam"
+group = "moderately_coarse"
+vertices = [[43, 7], [50, 0], [70, 0], [85, 15], [80, 20], [52, 20], [52, 7]]
+[class.names]
+en = "sandy loam"
+fr = "limon sableux"
+de = "sandiger Lehm"
+es = "franco arenoso"
+ru = "песчаный суглинок"
+pt = "franco arenoso"

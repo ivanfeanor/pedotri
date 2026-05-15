@@ -27,6 +27,7 @@ Quick usage::
 
 from __future__ import annotations
 
+import base64 as _base64
 from collections.abc import Callable
 from typing import Any
 
@@ -351,9 +352,16 @@ def _render_diagram_schema() -> dict[str, Any]:
     return {
         "name": "render_diagram",
         "description": (
-            "Render a soil texture diagram as a standalone SVG string. "
-            "Optionally overlay sample points. The SVG is suitable for "
-            "embedding in HTML, displaying in a chat, or saving to disk."
+            "Render a soil texture diagram with optional sample-point "
+            "overlays. Returns the diagram as image bytes for inline "
+            "display in the chat. "
+            "Two output formats: 'png' (default) is the fail-safe — "
+            "every MCP client renders PNG inline reliably; 'svg' is "
+            "supported by clients that handle vector image content "
+            "(some custom apps, text-based tools, future builds) and "
+            "is preferable when you need to scale the diagram, embed "
+            "it in HTML, or post-process it. PNG mode requires "
+            "matplotlib (bundled with the [mcp] extra)."
         ),
         "input_schema": {
             "type": "object",
@@ -361,6 +369,18 @@ def _render_diagram_schema() -> dict[str, Any]:
                 "classification": {
                     "type": "string",
                     "description": "Classification key (e.g. 'USDA').",
+                },
+                "format": {
+                    "type": "string",
+                    "enum": ["png", "svg"],
+                    "default": "png",
+                    "description": (
+                        "Image format. 'png' (default) renders inline in "
+                        "every MCP client. 'svg' is a vector format "
+                        "supported by clients that handle SVG image "
+                        "content; useful for scaling, HTML embedding, "
+                        "or post-processing."
+                    ),
                 },
                 "points": {
                     "type": "array",
@@ -540,10 +560,31 @@ def _h_convert_particle_size(args: dict[str, Any]) -> dict[str, Any]:
 
 def _h_render_diagram(args: dict[str, Any]) -> dict[str, Any]:
     classification = _require(args, "classification", str)
+    fmt = args.get("format", "png")
+    if fmt not in {"png", "svg"}:
+        raise InvalidInputError(f"Unknown render format {fmt!r}. Valid: 'png' (default), 'svg'.")
     points = args.get("points")
     point_labels = args.get("point_labels")
     locale = args.get("locale")
     title = args.get("title")
+
+    if fmt == "png":
+        png_bytes = _try_render_png(
+            classification,
+            points=points,
+            point_labels=point_labels,
+            locale=locale,
+            title=title,
+        )
+        if png_bytes is not None:
+            return {
+                "format": "png",
+                "encoding": "base64",
+                "content": _base64.standard_b64encode(png_bytes).decode("ascii"),
+            }
+        # matplotlib not installed; fall through to SVG so the caller
+        # still gets a useful response.
+
     svg = render_svg(
         classification,
         points=points,
@@ -551,7 +592,32 @@ def _h_render_diagram(args: dict[str, Any]) -> dict[str, Any]:
         locale=locale,
         title=title,
     )
-    return {"format": "svg", "content": svg}
+    return {"format": "svg", "encoding": "text", "content": svg}
+
+
+def _try_render_png(
+    classification: str,
+    *,
+    points: Any,
+    point_labels: Any,
+    locale: Any,
+    title: Any,
+) -> bytes | None:
+    """Render the diagram to PNG bytes if matplotlib is available."""
+    # matplotlib is an optional extra ([mcp] bundles it); defer the
+    # import so a bare `pip install pedotri` doesn't fail on this
+    # module.
+    try:
+        from pedotri.plot import render_png  # noqa: PLC0415
+    except ModuleNotFoundError:
+        return None
+    return render_png(
+        classification,
+        points=points,
+        point_labels=point_labels,
+        locale=locale,
+        title=title,
+    )
 
 
 def _require(args: dict[str, Any], key: str, types: type | tuple[type, ...]) -> Any:

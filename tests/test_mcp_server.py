@@ -107,8 +107,11 @@ def test_call_tool_schema_validation_returns_is_error() -> None:
 
 
 def test_call_tool_render_diagram_returns_image_content() -> None:
-    """render_diagram emits ImageContent (image/svg+xml) so MCP clients
-    can render the diagram inline rather than printing SVG markup."""
+    """render_diagram emits ImageContent so MCP clients render the
+    diagram inline rather than printing markup. PNG when matplotlib is
+    installed (bundled in the [mcp] extra), SVG as a graceful fallback
+    when it isn't.
+    """
     server = build_server()
     handler = server.request_handlers[CallToolRequest]
     request = CallToolRequest(
@@ -123,17 +126,58 @@ def test_call_tool_render_diagram_returns_image_content() -> None:
     # First block is the image, second is a minimal text companion.
     assert len(contents) == 2
     assert isinstance(contents[0], ImageContent)
-    assert contents[0].mimeType == "image/svg+xml"
-    svg_bytes = base64.standard_b64decode(contents[0].data)
-    assert svg_bytes.startswith(b"<svg")
-    assert svg_bytes.rstrip().endswith(b"</svg>")
+    mime = contents[0].mimeType
+    assert mime in {"image/png", "image/svg+xml"}
+    decoded = base64.standard_b64decode(contents[0].data)
+    if mime == "image/png":
+        # PNG signature: 89 50 4E 47 0D 0A 1A 0A
+        assert decoded[:8] == b"\x89PNG\r\n\x1a\n"
+    else:
+        assert decoded.startswith(b"<svg")
+        assert decoded.rstrip().endswith(b"</svg>")
     # The text companion describes what was rendered but does not
-    # re-include the SVG markup.
+    # re-include the image bytes.
     assert isinstance(contents[1], TextContent)
     companion = json.loads(contents[1].text)
-    assert companion["format"] == "svg"
+    assert companion["format"] in {"png", "svg+xml"}
     assert companion["rendered_inline"] is True
     assert companion["classification"] == "USDA"
+
+
+def test_call_tool_render_diagram_prefers_png_when_matplotlib_available() -> None:
+    """When matplotlib is installed (it is in the dev group + [mcp] extra),
+    the MCP server should emit PNG, which renders inline reliably in
+    every MCP client we know of."""
+    pytest.importorskip("matplotlib")
+    server = build_server()
+    handler = server.request_handlers[CallToolRequest]
+    request = CallToolRequest(
+        method="tools/call",
+        params=CallToolRequestParams(
+            name="render_diagram",
+            arguments={"classification": "USDA"},
+        ),
+    )
+    result: Any = _await(handler(request))
+    assert result.root.content[0].mimeType == "image/png"
+
+
+def test_call_tool_render_diagram_honours_explicit_svg_format() -> None:
+    """Callers can opt into SVG with format='svg' for clients that
+    render vector content (text editors, custom apps, future builds)."""
+    server = build_server()
+    handler = server.request_handlers[CallToolRequest]
+    request = CallToolRequest(
+        method="tools/call",
+        params=CallToolRequestParams(
+            name="render_diagram",
+            arguments={"classification": "USDA", "format": "svg"},
+        ),
+    )
+    result: Any = _await(handler(request))
+    assert result.root.content[0].mimeType == "image/svg+xml"
+    decoded = base64.standard_b64decode(result.root.content[0].data)
+    assert decoded.startswith(b"<svg")
 
 
 def test_call_tool_render_diagram_error_still_returns_json_envelope() -> None:

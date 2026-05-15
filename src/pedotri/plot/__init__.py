@@ -21,7 +21,7 @@ from pedotri.plot.svg import TextureDiagram, render_svg
 if TYPE_CHECKING:
     # Re-export the lazy-loaded backends for type checkers without
     # forcing the optional dependency at import time.
-    from pedotri.plot.mpl import render_mpl
+    from pedotri.plot.mpl import render_mpl, render_png
     from pedotri.plot.plotly_backend import render_plotly
 
 
@@ -37,6 +37,10 @@ def __getattr__(name: str) -> Any:
         from pedotri.plot.mpl import render_mpl
 
         return render_mpl
+    if name == "render_png":
+        from pedotri.plot.mpl import render_png
+
+        return render_png
     if name == "render_plotly":
         from pedotri.plot.plotly_backend import render_plotly
 
@@ -44,4 +48,4 @@ def __getattr__(name: str) -> Any:
     raise AttributeError(f"module 'pedotri.plot' has no attribute {name!r}")
 
 
-__all__ = ["TextureDiagram", "render_mpl", "render_plotly", "render_svg"]
+__all__ = ["TextureDiagram", "render_mpl", "render_plotly", "render_png", "render_svg"]

@@ -55,7 +55,7 @@ def build_server() -> Server:
     """
     try:
         from mcp.server import Server
-        from mcp.types import ImageContent, TextContent, Tool
+        from mcp.types import TextContent, Tool
     except ModuleNotFoundError as exc:  # pragma: no cover - tested elsewhere
         raise ModuleNotFoundError(
             "pedotri.mcp_server requires the 'mcp' SDK. Install with "
@@ -80,42 +80,65 @@ def build_server() -> Server:
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | ImageContent]:
         result = pedotri.ai.run(name, arguments)
 
-        # Render-diagram results carry an SVG payload; emit it as
-        # ImageContent so MCP clients (Claude Desktop, Cursor, ...) can
-        # display the diagram inline rather than printing the SVG markup
-        # as a text blob.
-        if (
-            name == "render_diagram"
-            and "error" not in result
-            and "content" in result
-            and result.get("format") == "svg"
-        ):
-            svg_text = result["content"]
-            return [
-                ImageContent(
-                    type="image",
-                    data=base64.standard_b64encode(svg_text.encode("utf-8")).decode("ascii"),
-                    mimeType="image/svg+xml",
-                ),
-                # Minimal text companion so the model knows what was
-                # rendered without re-receiving the SVG bytes.
-                TextContent(
-                    type="text",
-                    text=json.dumps(
-                        {
-                            "format": "svg",
-                            "rendered_inline": True,
-                            "classification": arguments.get("classification"),
-                        },
-                        ensure_ascii=False,
+        # Render-diagram results carry image data; emit it as
+        # ImageContent so MCP clients (Claude Desktop, Cursor, ...)
+        # display the diagram inline rather than printing markup.
+        if name == "render_diagram" and "error" not in result and "content" in result:
+            image_block = _wrap_render_result(result)
+            if image_block is not None:
+                from mcp.types import ImageContent as _ImageContent  # noqa: F401
+
+                return [
+                    image_block,
+                    # Minimal text companion so the model knows what
+                    # was rendered without re-receiving the image
+                    # bytes.
+                    TextContent(
+                        type="text",
+                        text=json.dumps(
+                            {
+                                "format": result["format"],
+                                "rendered_inline": True,
+                                "classification": arguments.get("classification"),
+                            },
+                            ensure_ascii=False,
+                        ),
                     ),
-                ),
-            ]
+                ]
 
         text = json.dumps(result, ensure_ascii=False)
         return [TextContent(type="text", text=text)]
 
     return server
+
+
+def _wrap_render_result(result: dict[str, Any]) -> Any:
+    """Map a pedotri.ai.run('render_diagram', ...) result into ImageContent.
+
+    The AI layer has already rendered the image and chosen the format
+    (PNG when matplotlib is available, SVG otherwise or when the
+    caller explicitly requested ``format="svg"``). All we do here is
+    wrap the payload in the MCP ImageContent shape.
+    """
+    from mcp.types import ImageContent
+
+    fmt = result.get("format")
+    content = result.get("content")
+    if not isinstance(content, str):
+        return None
+
+    if fmt == "png":
+        # ai layer already returned base64-encoded PNG bytes.
+        return ImageContent(type="image", data=content, mimeType="image/png")
+
+    if fmt == "svg":
+        return ImageContent(
+            type="image",
+            data=base64.standard_b64encode(content.encode("utf-8")).decode("ascii"),
+            mimeType="image/svg+xml",
+        )
+
+    return None
 
 
 async def _run_stdio() -> None:

@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.3] — 2026-05-15
+
+### Changed
+
+- **MCP `render_diagram` now returns PNG by default** so the diagram renders inline in every MCP client (Claude Desktop, Cursor, …). PNG is rasterized via matplotlib (added to the `[mcp]` extra so `pip install pedotri[mcp]` gets everything needed for inline rendering). The `image/svg+xml` `ImageContent` path that 0.1.1/0.1.2 used worked in some clients but not in Claude Desktop's current build.
+- **`render_diagram` gains a `format` parameter** taking `"png"` (default, fail-safe) or `"svg"` (vector, for clients that support it / HTML embedding / post-processing). The tool description tells the model explicitly when to pick each.
+- **`pedotri.ai.run("render_diagram", ...)` response shape**: now `{"format": "png"|"svg", "encoding": "base64"|"text", "content": ...}`. PNG mode falls back to SVG automatically when matplotlib isn't installed, so callers without the `[mcp]` extra still get a usable response.
+
+### Added
+
+- `pedotri.plot.render_png(classification, ...)` helper that renders directly to PNG bytes at 200 dpi (retina-ready for typical chat-embed widths, ~200 KB files). Re-uses the existing matplotlib backend for visual consistency with `render_mpl`.
+
 ## [0.1.2] — 2026-05-15
 
 ### Fixed
@@ -96,7 +108,8 @@ Fourteen classifications shipped, with class names in en / fr / de / es / ru / p
 - mkdocs site: quickstart, built-in / custom-classification / i18n guides, PTFs, plotting, CLI, AI tools, units, and full API reference.
 - Polygon provenance notes (Tier 1 direct-from-literature vs. Tier 2 textbook-derived).
 
-[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.3
 [0.1.2]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.0

@@ -19,7 +19,21 @@ import pedotri
 from pedotri.geometry import points_in_polygon, signed_distance_to_polygon
 
 # Built-in 2-D classifications used in the parametric properties.
-_2D_KEYS = ["USDA", "FAO", "INTERNATIONAL", "ISSS", "GEPPA", "JAMAGNE", "HYPRES", "EMBRAPA", "KA5"]
+_2D_KEYS = [
+    "USDA",
+    "FAO",
+    "INTERNATIONAL",
+    "ISSS",
+    "GEPPA",
+    "JAMAGNE",
+    "HYPRES",
+    "EMBRAPA",
+    "KA5",
+    "NORTHCOTE",
+    "PTG",
+    "CHINA",
+    "AVERY",
+]
 
 
 @st.composite

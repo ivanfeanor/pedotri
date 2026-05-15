@@ -1,0 +1,223 @@
+# Northcote — Australian factual-key soil texture classification.
+#
+# Sixteen field-texture classes from Northcote's *A Factual Key for the
+# Recognition of Australian Soils* (4th ed., 1979), as commonly mapped
+# onto the sand-silt-clay simplex in Australian soil-survey practice.
+# The distinguishing feature relative to USDA is a finer subdivision of
+# the clay-rich top of the triangle (HC / MHC / MC / LMC / LC), useful
+# for the heavy soils common across southern and eastern Australia.
+
+[meta]
+key = "NORTHCOTE"
+axes = ["sand", "clay"]
+default_locale = "en"
+reference = "Northcote, K.H. (1979). A Factual Key for the Recognition of Australian Soils (4th ed.). Rellim Technical Publications, Glenside, South Australia."
+description = "Australian 16-class field-texture grading. Polygons map field-grade boundaries onto sand and clay percentages and provide five clay subdivisions (Heavy / Medium-Heavy / Medium / Light-Medium / Light Clay) above the 35 % clay line."
+
+[meta.names]
+en = "Northcote"
+fr = "Northcote"
+de = "Northcote"
+es = "Northcote"
+ru = "Northcote"
+pt = "Northcote"
+
+# --- Clay subdivisions (clay > 35%) --------------------------------------
+
+[[class]]
+key = "HC"
+group = "fine"
+vertices = [[0, 60], [40, 60], [0, 100]]
+[class.names]
+en = "heavy clay"
+fr = "argile lourde"
+de = "schwerer Ton"
+es = "arcilla pesada"
+ru = "тяжёлая глина"
+pt = "argila pesada"
+
+[[class]]
+key = "MHC"
+group = "fine"
+vertices = [[0, 50], [50, 50], [40, 60], [0, 60]]
+[class.names]
+en = "medium-heavy clay"
+fr = "argile moyenne-lourde"
+de = "mittel-schwerer Ton"
+es = "arcilla medio-pesada"
+ru = "среднетяжёлая глина"
+pt = "argila médio-pesada"
+
+[[class]]
+key = "MC"
+group = "fine"
+vertices = [[0, 45], [55, 45], [50, 50], [0, 50]]
+[class.names]
+en = "medium clay"
+fr = "argile moyenne"
+de = "mittlerer Ton"
+es = "arcilla media"
+ru = "средняя глина"
+pt = "argila média"
+
+[[class]]
+key = "LMC"
+group = "fine"
+vertices = [[0, 40], [60, 40], [55, 45], [0, 45]]
+[class.names]
+en = "light-medium clay"
+fr = "argile légère-moyenne"
+de = "leicht-mittlerer Ton"
+es = "arcilla ligero-media"
+ru = "лёгко-средняя глина"
+pt = "argila leve-média"
+
+[[class]]
+key = "LC"
+group = "fine"
+vertices = [[0, 35], [65, 35], [60, 40], [0, 40]]
+[class.names]
+en = "light clay"
+fr = "argile légère"
+de = "leichter Ton"
+es = "arcilla ligera"
+ru = "лёгкая глина"
+pt = "argila leve"
+
+# --- Clay loams (clay 25-35%) --------------------------------------------
+
+[[class]]
+key = "ZC"
+group = "moderately_fine"
+vertices = [[0, 25], [30, 25], [30, 35], [0, 35]]
+[class.names]
+en = "silty clay"
+fr = "argile silteuse"
+de = "schluffiger Ton"
+es = "arcilla limosa"
+ru = "пылеватая глина"
+pt = "argila siltosa"
+
+[[class]]
+key = "CL"
+group = "moderately_fine"
+vertices = [[30, 25], [50, 25], [50, 35], [30, 35]]
+[class.names]
+en = "clay loam"
+fr = "limon argileux"
+de = "Tonlehm"
+es = "franco arcilloso"
+ru = "тяжёлый суглинок"
+pt = "franco argiloso"
+
+[[class]]
+key = "SC"
+group = "moderately_fine"
+vertices = [[50, 25], [75, 25], [65, 35], [50, 35]]
+[class.names]
+en = "sandy clay"
+fr = "argile sableuse"
+de = "sandiger Ton"
+es = "arcilla arenosa"
+ru = "песчаная глина"
+pt = "argila arenosa"
+
+# --- Loams (clay 15-25%) -------------------------------------------------
+
+[[class]]
+key = "SiCL"
+group = "medium_fine"
+vertices = [[0, 15], [30, 15], [30, 25], [0, 25]]
+[class.names]
+en = "silty clay loam"
+fr = "limon argilo-silteux"
+de = "schluffiger Tonlehm"
+es = "franco arcillo-limoso"
+ru = "пылеватый тяжёлый суглинок"
+pt = "franco argilo-siltoso"
+
+[[class]]
+key = "L"
+group = "medium"
+vertices = [[30, 15], [50, 15], [50, 25], [30, 25]]
+[class.names]
+en = "loam"
+fr = "limon"
+de = "Lehm"
+es = "franco"
+ru = "суглинок"
+pt = "franco"
+
+[[class]]
+key = "SCL"
+group = "medium_fine"
+vertices = [[50, 15], [85, 15], [75, 25], [50, 25]]
+[class.names]
+en = "sandy clay loam"
+fr = "limon argilo-sableux"
+de = "sandiger Tonlehm"
+es = "franco arcillo-arenoso"
+ru = "песчаный тяжёлый суглинок"
+pt = "franco argilo-arenoso"
+
+# --- Coarse loams (clay 0-15%) -------------------------------------------
+
+[[class]]
+key = "SiL"
+group = "medium"
+vertices = [[0, 0], [30, 0], [30, 15], [0, 15]]
+[class.names]
+en = "silty loam"
+fr = "limon silteux"
+de = "schluffiger Lehm"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+[[class]]
+key = "SL"
+group = "moderately_coarse"
+vertices = [[30, 0], [65, 0], [65, 15], [30, 15]]
+[class.names]
+en = "sandy loam"
+fr = "limon sableux"
+de = "sandiger Lehm"
+es = "franco arenoso"
+ru = "песчаный суглинок"
+pt = "franco arenoso"
+
+[[class]]
+key = "CS"
+group = "moderately_coarse"
+vertices = [[65, 5], [95, 5], [85, 15], [65, 15]]
+[class.names]
+en = "clayey sand"
+fr = "sable argileux"
+de = "toniger Sand"
+es = "arena arcillosa"
+ru = "глинистый песок"
+pt = "areia argilosa"
+
+[[class]]
+key = "LS"
+group = "coarse"
+vertices = [[65, 0], [85, 0], [85, 5], [65, 5]]
+[class.names]
+en = "loamy sand"
+fr = "sable limoneux"
+de = "lehmiger Sand"
+es = "arena franca"
+ru = "супесь"
+pt = "areia franca"
+
+[[class]]
+key = "S"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [95, 5], [85, 5]]
+[class.names]
+en = "sand"
+fr = "sable"
+de = "Sand"
+es = "arena"
+ru = "песок"
+pt = "areia"

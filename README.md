@@ -62,10 +62,14 @@ result.distance  # positive when strictly inside the class polygon
 | `FAO`           | International   | sand, clay        | 3       | Verheye & Ameryckx 1984 (FAO grouping)             |
 | `INTERNATIONAL` | International   | sand, clay        | 11      | Leeper & Uren 1993                                 |
 | `ISSS`          | International   | sand, clay        | 12      | ISSS / Verheye & Ameryckx 1984                     |
+| `AVERY`         | UK              | sand, clay        | 12      | Avery 1980 (Soil Survey of England and Wales)      |
 | `JAMAGNE`       | France          | sand, clay        | 13      | Jamagne 1967 (original)                            |
 | `GEPPA`         | France          | sand, clay        | 14      | Baize & Jamagne 1995 (GEPPA-Aisne refinement)      |
 | `HYPRES`        | Europe          | sand, clay        | 5       | Wösten et al. 1999                                 |
 | `KA5`           | Germany         | sand, clay        | 31      | Bodenkundliche Kartieranleitung 5 (full subdivision) |
+| `PTG`           | Poland          | sand, clay        | 6       | Polskie Towarzystwo Gleboznawcze 2008              |
+| `NORTHCOTE`     | Australia       | sand, clay        | 16      | Northcote 1979 (Factual Key, fine clay subdivisions) |
+| `CHINA`         | China           | sand, clay        | 6       | GB/T 17296-2009 (Chinese national standard)        |
 | `EMBRAPA`       | Brazil          | sand, clay        | 5       | Embrapa, SiBCS 5ª ed. 2018                         |
 | `KACHINSKY`     | Russia / CIS    | physical_clay     | 9       | Качинский 1965 (1-D classification by <0.01 mm fraction) |
 

@@ -1,0 +1,166 @@
+# Avery 1980 — UK Soil Survey of England and Wales.
+#
+# Twelve textural classes used by the UK Soil Survey and ADAS for
+# agronomic soil description. Polygon boundaries follow the USDA
+# texture triangle almost exactly; the distinguishing features are
+# British nomenclature and the "Z" prefix denoting silt-rich classes
+# (from German *Schluff*).
+
+[meta]
+key = "AVERY"
+axes = ["sand", "clay"]
+default_locale = "en"
+reference = "Avery, B.W. (1980). Soil classification for England and Wales (higher categories). Soil Survey Technical Monograph No. 14. Soil Survey of England and Wales, Harpenden."
+description = "Twelve-class British classification per Avery 1980. Boundaries are geometrically identical to USDA; class codes follow the British convention where 'Z' denotes silt-rich classes (e.g. ZL = silty loam, ZC = silty clay)."
+
+[meta.names]
+en = "Avery (UK Soil Survey 1980)"
+fr = "Avery (Royaume-Uni 1980)"
+de = "Avery (UK Bodenkartierung 1980)"
+es = "Avery (Reino Unido 1980)"
+ru = "Эйвери (Великобритания, 1980)"
+pt = "Avery (Reino Unido 1980)"
+
+[[class]]
+key = "C"
+group = "fine"
+vertices = [[0, 100], [0, 60], [20, 40], [45, 40], [45, 55]]
+[class.names]
+en = "clay"
+fr = "argile"
+de = "Ton"
+es = "arcilla"
+ru = "глина"
+pt = "argila"
+
+[[class]]
+key = "ZC"
+group = "fine"
+vertices = [[0, 60], [0, 40], [20, 40]]
+[class.names]
+en = "silty clay"
+fr = "argile silteuse"
+de = "schluffiger Ton"
+es = "arcilla limosa"
+ru = "пылеватая глина"
+pt = "argila siltosa"
+
+[[class]]
+key = "ZCL"
+group = "moderately_fine"
+vertices = [[0, 40], [0, 27], [20, 27], [20, 40]]
+[class.names]
+en = "silty clay loam"
+fr = "limon argilo-silteux"
+de = "schluffiger Tonlehm"
+es = "franco arcillo-limoso"
+ru = "пылеватый тяжёлый суглинок"
+pt = "franco argilo-siltoso"
+
+[[class]]
+key = "SC"
+group = "fine"
+vertices = [[45, 55], [45, 35], [65, 35]]
+[class.names]
+en = "sandy clay"
+fr = "argile sableuse"
+de = "sandiger Ton"
+es = "arcilla arenosa"
+ru = "песчаная глина"
+pt = "argila arenosa"
+
+[[class]]
+key = "SCL"
+group = "moderately_fine"
+vertices = [[45, 35], [45, 27], [52, 20], [80, 20], [65, 35]]
+[class.names]
+en = "sandy clay loam"
+fr = "limon argilo-sableux"
+de = "sandiger Tonlehm"
+es = "franco arcillo-arenoso"
+ru = "песчаный тяжёлый суглинок"
+pt = "franco argilo-arenoso"
+
+[[class]]
+key = "CL"
+group = "moderately_fine"
+vertices = [[20, 40], [20, 27], [45, 27], [45, 40]]
+[class.names]
+en = "clay loam"
+fr = "limon argileux"
+de = "Tonlehm"
+es = "franco arcilloso"
+ru = "тяжёлый суглинок"
+pt = "franco argiloso"
+
+[[class]]
+key = "Z"
+group = "medium"
+vertices = [[0, 12], [0, 0], [20, 0], [8, 12]]
+[class.names]
+en = "silt"
+fr = "silt"
+de = "Schluff"
+es = "limo"
+ru = "пыль"
+pt = "silte"
+
+[[class]]
+key = "ZL"
+group = "medium"
+vertices = [[8, 12], [20, 0], [50, 0], [23, 27], [0, 27], [0, 12]]
+[class.names]
+en = "silty loam"
+fr = "limon silteux"
+de = "schluffiger Lehm"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+[[class]]
+key = "L"
+group = "medium"
+vertices = [[23, 27], [43, 7], [52, 7], [52, 20], [45, 27]]
+[class.names]
+en = "loam"
+fr = "limon"
+de = "Lehm"
+es = "franco"
+ru = "суглинок"
+pt = "franco"
+
+[[class]]
+key = "S"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [90, 10]]
+[class.names]
+en = "sand"
+fr = "sable"
+de = "Sand"
+es = "arena"
+ru = "песок"
+pt = "areia"
+
+[[class]]
+key = "LS"
+group = "coarse"
+vertices = [[70, 0], [85, 0], [90, 10], [85, 15]]
+[class.names]
+en = "loamy sand"
+fr = "sable limoneux"
+de = "lehmiger Sand"
+es = "arena franca"
+ru = "супесь"
+pt = "areia franca"
+
+[[class]]
+key = "SL"
+group = "moderately_coarse"
+vertices = [[43, 7], [50, 0], [70, 0], [85, 15], [80, 20], [52, 20], [52, 7]]
+[class.names]
+en = "sandy loam"
+fr = "limon sableux"
+de = "sandiger Lehm"
+es = "franco arenoso"
+ru = "песчаный суглинок"
+pt = "franco arenoso"

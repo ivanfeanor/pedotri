@@ -6,10 +6,14 @@
 | `FAO`           | International | sand, clay     | 3       | Verheye & Ameryckx 1984 (FAO grouping)             |
 | `INTERNATIONAL` | International | sand, clay     | 11      | Leeper & Uren 1993                                 |
 | `ISSS`          | International | sand, clay     | 12      | ISSS / Verheye & Ameryckx 1984                     |
+| `AVERY`         | UK            | sand, clay     | 12      | Avery 1980 (Soil Survey of England and Wales)      |
 | `JAMAGNE`       | France        | sand, clay     | 13      | Jamagne 1967                                       |
 | `GEPPA`         | France        | sand, clay     | 14      | Baize & Jamagne 1995 (GEPPA-Aisne refinement)      |
 | `HYPRES`        | Europe        | sand, clay     | 5       | Wösten et al. 1999                                 |
 | `KA5`           | Germany       | sand, clay     | 31      | Bodenkundliche Kartieranleitung 5, 2005            |
+| `PTG`           | Poland        | sand, clay     | 6       | Polskie Towarzystwo Gleboznawcze 2008              |
+| `NORTHCOTE`     | Australia     | sand, clay     | 16      | Northcote 1979 (Factual Key)                       |
+| `CHINA`         | China         | sand, clay     | 6       | GB/T 17296-2009                                    |
 | `EMBRAPA`       | Brazil        | sand, clay     | 5       | Embrapa, SiBCS 5ª ed. 2018                         |
 | `KACHINSKY`     | Russia / CIS  | physical_clay  | 9       | Kachinsky 1965 (by particles < 0.01 mm)            |
 
@@ -40,6 +44,8 @@ All built-in classifications ship with class names in `en`, `fr`, `de`, `es`, `r
 - `KA5` → `de`
 - `KACHINSKY` → `ru`
 - `EMBRAPA` → `pt`
+- `PTG` → `pl`
+- `CHINA` → `zh`
 - All others → `en`
 
 `pedotri.classify(..., locale=None)` always returns the stable class key; pass a locale tag to get the localized name.

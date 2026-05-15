@@ -29,6 +29,10 @@ _BUILTIN = [
     "embrapa",
     "ka5",
     "kachinsky",
+    "northcote",
+    "ptg",
+    "china",
+    "avery",
 ]
 
 
@@ -204,3 +208,86 @@ def test_ka5_default_locale_is_german() -> None:
     assert c.default_locale == "de"
     assert c.class_by_key("Ss").name("de") == "Reinsand"
     assert c.class_by_key("Tt").name("de") == "Reinton"
+
+
+# --- Northcote (Australia) ----------------------------------------------
+
+
+def test_northcote_reference_points() -> None:
+    # Distinctive feature is the fine clay subdivision (HC..LC).
+    assert pedotri.classify(5, 65, "NORTHCOTE") == "HC"
+    assert pedotri.classify(10, 55, "NORTHCOTE") == "MHC"
+    assert pedotri.classify(10, 47, "NORTHCOTE") == "MC"
+    assert pedotri.classify(10, 42, "NORTHCOTE") == "LMC"
+    assert pedotri.classify(10, 37, "NORTHCOTE") == "LC"
+    assert pedotri.classify(95, 2, "NORTHCOTE") == "S"
+
+
+def test_northcote_has_16_classes() -> None:
+    c = _load("northcote")
+    assert len(c.classes) == 16
+
+
+# --- PTG (Poland) -------------------------------------------------------
+
+
+def test_ptg_reference_points() -> None:
+    assert pedotri.classify(95, 2, "PTG") == "pl"
+    assert pedotri.classify(75, 5, "PTG") == "ps"
+    assert pedotri.classify(60, 20, "PTG") == "gp"
+    assert pedotri.classify(30, 20, "PTG") == "gl"
+    assert pedotri.classify(30, 40, "PTG") == "gc"
+    assert pedotri.classify(10, 70, "PTG") == "i"
+
+
+def test_ptg_default_locale_is_polish() -> None:
+    c = _load("ptg")
+    assert c.default_locale == "pl"
+    assert c.class_by_key("pl").name("pl") == "piasek luźny"
+    assert c.class_by_key("i").name("pl") == "ił"
+
+
+# --- China (GB/T 17296) -------------------------------------------------
+
+
+def test_china_reference_points() -> None:
+    assert pedotri.classify(95, 2, "CHINA") == "sha_tu"
+    assert pedotri.classify(75, 10, "CHINA") == "sha_rang"
+    assert pedotri.classify(50, 15, "CHINA") == "rang"
+    assert pedotri.classify(10, 10, "CHINA") == "fen_rang"
+    assert pedotri.classify(30, 30, "CHINA") == "nian_rang"
+    assert pedotri.classify(10, 50, "CHINA") == "nian_tu"
+
+
+def test_china_default_locale_is_chinese() -> None:
+    c = _load("china")
+    assert c.default_locale == "zh"
+    assert c.class_by_key("sha_tu").name("zh") == "砂土"
+    assert c.class_by_key("nian_tu").name("zh") == "黏土"
+
+
+# --- Avery (UK Soil Survey 1980) ----------------------------------------
+
+
+def test_avery_polygons_track_usda() -> None:
+    # Avery 1980 uses USDA's geometric boundaries; the same sample must
+    # classify into the corresponding class under either scheme.
+    pairs = [
+        ("clay", "C"),
+        ("sandy_clay_loam", "SCL"),
+        ("sand", "S"),
+        ("loam", "L"),
+        ("silt_loam", "ZL"),
+    ]
+    samples = [(13, 50), (60, 20), (95, 2), (40, 15), (20, 15)]
+    for sand, clay in samples:
+        u = pedotri.classify(sand, clay, "USDA")
+        a = pedotri.classify(sand, clay, "AVERY")
+        for usda_cls, avery_cls in pairs:
+            if u == usda_cls:
+                assert a == avery_cls, f"({sand}, {clay}): USDA {u!r} vs AVERY {a!r}"
+
+
+def test_avery_has_twelve_classes() -> None:
+    c = _load("avery")
+    assert len(c.classes) == 12

@@ -1,0 +1,102 @@
+# China — GB/T 17296-2009 soil texture classification.
+#
+# Six-class national standard for soil texture used in Chinese
+# pedology and agricultural soil mapping. Particle-size cutoffs follow
+# the ISSS convention (sand 0.02-2.0 mm; clay <0.002 mm); samples
+# analysed against USDA cutoffs (sand 0.05-2.0 mm) should be passed
+# through ``pedotri.psd.convert(..., source="USDA", target="ISSS")``
+# before classification.
+
+[meta]
+key = "CHINA"
+axes = ["sand", "clay"]
+default_locale = "zh"
+reference = "GB/T 17296-2009. 中华人民共和国国家标准 — 中国土壤分类与代码 (Chinese Soil Classification and Code). 国家标准化管理委员会, Beijing."
+description = "Chinese national standard textural classification (GB/T 17296-2009). Six classes covering the full sand-silt-clay simplex. Uses ISSS-style particle-size cutoffs (0.02 mm sand-silt boundary)."
+
+[meta.names]
+zh = "中国土壤质地分类 (GB/T 17296)"
+en = "China soil texture classification (GB/T 17296)"
+fr = "Classification chinoise des textures (GB/T 17296)"
+de = "Chinesische Bodentextur-Klassifikation (GB/T 17296)"
+es = "Clasificación china de texturas (GB/T 17296)"
+ru = "Китайская классификация почвенных текстур (GB/T 17296)"
+pt = "Classificação chinesa de texturas (GB/T 17296)"
+
+[[class]]
+key = "sha_tu"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [85, 15]]
+[class.names]
+zh = "砂土"
+en = "sand"
+fr = "sable"
+de = "Sand"
+es = "arena"
+ru = "песок"
+pt = "areia"
+
+[[class]]
+key = "sha_rang"
+group = "moderately_coarse"
+vertices = [[65, 0], [85, 0], [85, 15], [75, 25], [65, 25]]
+[class.names]
+zh = "砂质壤土"
+en = "sandy loam"
+fr = "limon sableux"
+de = "sandiger Lehm"
+es = "franco arenoso"
+ru = "песчаный суглинок"
+pt = "franco arenoso"
+
+[[class]]
+key = "rang"
+group = "medium"
+vertices = [[25, 0], [65, 0], [65, 25], [25, 25]]
+[class.names]
+zh = "壤土"
+en = "loam"
+fr = "limon"
+de = "Lehm"
+es = "franco"
+ru = "суглинок"
+pt = "franco"
+
+[[class]]
+key = "fen_rang"
+group = "medium"
+vertices = [[0, 0], [25, 0], [25, 25], [0, 25]]
+[class.names]
+zh = "粉砂壤土"
+en = "silt loam"
+fr = "limon silteux"
+de = "schluffiger Lehm"
+es = "franco limoso"
+ru = "пылеватый суглинок"
+pt = "franco siltoso"
+
+[[class]]
+key = "nian_rang"
+group = "moderately_fine"
+vertices = [[0, 25], [75, 25], [60, 40], [0, 40]]
+[class.names]
+zh = "黏壤土"
+en = "clay loam"
+fr = "limon argileux"
+de = "Tonlehm"
+es = "franco arcilloso"
+ru = "тяжёлый суглинок"
+pt = "franco argiloso"
+
+[[class]]
+key = "nian_tu"
+group = "fine"
+vertices = [[0, 40], [60, 40], [0, 100]]
+[class.names]
+zh = "黏土"
+en = "clay"
+fr = "argile"
+de = "Ton"
+es = "arcilla"
+ru = "глина"
+pt = "argila"

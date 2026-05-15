@@ -1,0 +1,100 @@
+# PTG — Polish Society of Soil Science textural classification (2008).
+#
+# Six broad classes per Polskie Towarzystwo Gleboznawcze 2008
+# *Klasyfikacja uziarnienia gleb i utworów mineralnych*. Native locale
+# is Polish; class names also provided in English / German / Russian /
+# French / Spanish / Portuguese for international use.
+
+[meta]
+key = "PTG"
+axes = ["sand", "clay"]
+default_locale = "pl"
+reference = "Polskie Towarzystwo Gleboznawcze (2008). Klasyfikacja uziarnienia gleb i utworów mineralnych — PTG 2008. Roczniki Gleboznawcze 60(2): 5-16."
+description = "Polish national textural classification (PTG 2008). Six broad classes, with names native to Polish pedology (piasek / glina / ił)."
+
+[meta.names]
+pl = "PTG (Polskie Towarzystwo Gleboznawcze)"
+en = "PTG (Polish Society of Soil Science)"
+de = "PTG (Polnische Gesellschaft für Bodenkunde)"
+fr = "PTG (Société polonaise de pédologie)"
+es = "PTG (Sociedad Polaca de la Ciencia del Suelo)"
+ru = "PTG (Польское почвоведческое общество)"
+pt = "PTG (Sociedade Polonesa de Pedologia)"
+
+[[class]]
+key = "pl"
+group = "coarse"
+vertices = [[85, 0], [100, 0], [95, 5], [85, 5]]
+[class.names]
+pl = "piasek luźny"
+en = "loose sand"
+de = "Lockersand"
+fr = "sable meuble"
+es = "arena suelta"
+ru = "песок рыхлый"
+pt = "areia solta"
+
+[[class]]
+key = "ps"
+group = "moderately_coarse"
+vertices = [[65, 0], [85, 0], [95, 5], [85, 15], [65, 15]]
+[class.names]
+pl = "piasek gliniasty"
+en = "loamy sand"
+de = "lehmiger Sand"
+fr = "sable limoneux"
+es = "arena franca"
+ru = "супесь"
+pt = "areia franca"
+
+[[class]]
+key = "gp"
+group = "moderately_coarse"
+vertices = [[50, 0], [65, 0], [65, 15], [85, 15], [70, 30], [50, 30]]
+[class.names]
+pl = "glina piaszczysta"
+en = "sandy loam"
+de = "sandiger Lehm"
+fr = "limon sableux"
+es = "franco arenoso"
+ru = "песчаный суглинок"
+pt = "franco arenoso"
+
+[[class]]
+key = "gl"
+group = "medium"
+vertices = [[0, 0], [50, 0], [50, 30], [0, 30]]
+[class.names]
+pl = "glina lekka"
+en = "light loam"
+de = "leichter Lehm"
+fr = "limon léger"
+es = "franco ligero"
+ru = "лёгкий суглинок"
+pt = "franco leve"
+
+[[class]]
+key = "gc"
+group = "moderately_fine"
+vertices = [[0, 30], [70, 30], [50, 50], [0, 50]]
+[class.names]
+pl = "glina ciężka"
+en = "heavy loam"
+de = "schwerer Lehm"
+fr = "limon lourd"
+es = "franco pesado"
+ru = "тяжёлый суглинок"
+pt = "franco pesado"
+
+[[class]]
+key = "i"
+group = "fine"
+vertices = [[0, 50], [50, 50], [0, 100]]
+[class.names]
+pl = "ił"
+en = "clay"
+de = "Ton"
+fr = "argile"
+es = "arcilla"
+ru = "глина"
+pt = "argila"

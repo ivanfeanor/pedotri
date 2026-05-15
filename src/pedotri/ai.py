@@ -499,9 +499,7 @@ def _h_saxton_rawls(args: dict[str, Any]) -> dict[str, Any]:
     om = float(args.get("organic_matter", 1.0))
     df = float(args.get("density_factor", 1.0))
     units = args.get("units", "%")
-    return saxton_rawls(
-        sand, clay, om, density_factor=df, units=units
-    ).to_dict()
+    return saxton_rawls(sand, clay, om, density_factor=df, units=units).to_dict()
 
 
 def _h_wosten(args: dict[str, Any]) -> dict[str, Any]:
@@ -530,9 +528,7 @@ def _h_convert_particle_size(args: dict[str, Any]) -> dict[str, Any]:
     source = _require(args, "source", str)
     target = _require(args, "target", str)
     units = args.get("units", "%")
-    s, si, c = _psd_convert(
-        sand, silt, clay, source=source, target=target, units=units
-    )
+    s, si, c = _psd_convert(sand, silt, clay, source=source, target=target, units=units)
     return {
         "sand": float(s[0]),
         "silt": float(si[0]),
@@ -564,13 +560,9 @@ def _require(args: dict[str, Any], key: str, types: type | tuple[type, ...]) -> 
     value = args[key]
     if not isinstance(value, types):
         type_names = (
-            types.__name__
-            if isinstance(types, type)
-            else " or ".join(t.__name__ for t in types)
+            types.__name__ if isinstance(types, type) else " or ".join(t.__name__ for t in types)
         )
-        raise TypeError(
-            f"Argument {key!r} must be {type_names}, got {type(value).__name__}."
-        )
+        raise TypeError(f"Argument {key!r} must be {type_names}, got {type(value).__name__}.")
     return value
 
 

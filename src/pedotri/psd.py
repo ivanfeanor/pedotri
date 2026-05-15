@@ -227,8 +227,7 @@ def _validate_standard(standard: str, *, role: str) -> None:
             f"{_NON_TRIANGLE_STANDARDS[standard.upper()]}"
         )
     raise InvalidInputError(
-        f"Unknown {role} standard {standard!r}. "
-        f"Known: {sorted(SAND_SILT_CUTOFF_MM)!r}."
+        f"Unknown {role} standard {standard!r}. Known: {sorted(SAND_SILT_CUTOFF_MM)!r}."
     )
 
 

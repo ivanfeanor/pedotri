@@ -113,9 +113,7 @@ def organic_carbon_to_organic_matter(
     """
     arr = np.atleast_1d(np.asarray(oc, dtype=np.float64))
     if factor <= 0:
-        raise InvalidInputError(
-            f"OC-to-OM factor must be strictly positive, got {factor}."
-        )
+        raise InvalidInputError(f"OC-to-OM factor must be strictly positive, got {factor}.")
     return arr * factor
 
 
@@ -125,9 +123,7 @@ def organic_matter_to_organic_carbon(
     """Convert organic matter to organic carbon (inverse of Van Bemmelen)."""
     arr = np.atleast_1d(np.asarray(om, dtype=np.float64))
     if factor <= 0:
-        raise InvalidInputError(
-            f"OC-to-OM factor must be strictly positive, got {factor}."
-        )
+        raise InvalidInputError(f"OC-to-OM factor must be strictly positive, got {factor}.")
     return arr / factor
 
 
@@ -142,9 +138,7 @@ def _factor_to_percent(units: str) -> float:
         return 0.1
     if units == "g/g":
         return 100.0
-    raise InvalidInputError(
-        f"Unknown units {units!r}. Valid: '%', 'g/kg', 'g/g'."
-    )
+    raise InvalidInputError(f"Unknown units {units!r}. Valid: '%', 'g/kg', 'g/g'.")
 
 
 def _convert_inputs(value: ScalarOrArrayLike, units: str) -> ScalarOrArrayLike:

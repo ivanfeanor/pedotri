@@ -14,13 +14,7 @@ To install for Claude Desktop, add to your config (usually
 ``~/Library/Application Support/Claude/claude_desktop_config.json`` on
 macOS)::
 
-    {
-      "mcpServers": {
-        "pedotri": {
-          "command": "pedotri-mcp"
-        }
-      }
-    }
+    {"mcpServers": {"pedotri": {"command": "pedotri-mcp"}}}
 
 Claude will then see eight pedotri tools at the start of every
 conversation and can call them in tool-use loops.
@@ -82,9 +76,7 @@ def build_server() -> Server:
         ]
 
     @server.call_tool()  # type: ignore[untyped-decorator]
-    async def call_tool(
-        name: str, arguments: dict[str, Any]
-    ) -> list[TextContent]:
+    async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
         result = pedotri.ai.run(name, arguments)
         text = json.dumps(result, ensure_ascii=False)
         return [TextContent(type="text", text=text)]

@@ -117,9 +117,7 @@ def test_saxton_rawls_density_factor_increases_bulk_density() -> None:
     """Saxton-Rawls 2006 Eq. 6-7: DF > 1 compacts the soil."""
     normal = saxton_rawls(65, 10, 2.5)
     compacted = saxton_rawls(65, 10, 2.5, density_factor=1.10)
-    assert compacted.bulk_density == pytest.approx(
-        normal.bulk_density * 1.10, rel=1e-6
-    )
+    assert compacted.bulk_density == pytest.approx(normal.bulk_density * 1.10, rel=1e-6)
     # Compaction reduces porosity → lower saturation.
     assert compacted.saturation < normal.saturation
     # Field capacity moves slightly under compaction (Eq. 8).

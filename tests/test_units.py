@@ -138,9 +138,7 @@ def test_wosten_bulk_density_not_converted() -> None:
 
 def test_psd_convert_units_keyword() -> None:
     s_pct, si_pct, c_pct = psd_convert(60, 30, 10, source="USDA", target="ISSS")
-    s_gkg, si_gkg, c_gkg = psd_convert(
-        600, 300, 100, source="USDA", target="ISSS", units="g/kg"
-    )
+    s_gkg, si_gkg, c_gkg = psd_convert(600, 300, 100, source="USDA", target="ISSS", units="g/kg")
     # psd.convert always returns percent regardless of input units.
     assert s_pct[0] == pytest.approx(s_gkg[0])
     assert si_pct[0] == pytest.approx(si_gkg[0])
@@ -152,11 +150,7 @@ def test_psd_convert_units_keyword() -> None:
 
 def test_ai_schemas_advertise_units_param() -> None:
     schemas = pedotri.ai.tool_schemas()
-    has_units = {
-        s["name"]
-        for s in schemas
-        if "units" in s["input_schema"].get("properties", {})
-    }
+    has_units = {s["name"] for s in schemas if "units" in s["input_schema"].get("properties", {})}
     # Every tool that takes fraction values exposes `units`.
     assert has_units >= {
         "classify_soil",

@@ -82,9 +82,7 @@ _TILING_2D_KEYS = [
 @settings(
     max_examples=200, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
 )
-def test_tiling_classifications_cover_simplex(
-    key: str, point: tuple[float, float]
-) -> None:
+def test_tiling_classifications_cover_simplex(key: str, point: tuple[float, float]) -> None:
     """Tiling classifications never return None on any interior point.
 
     Surfaces accidental coverage gaps introduced by hand-authored polygon

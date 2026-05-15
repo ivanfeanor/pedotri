@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-05-15
+
+### Changed
+
+- **MCP `render_diagram` now returns `ImageContent`** (mimeType `image/svg+xml`) so Claude Desktop / Cursor / other MCP clients render the diagram inline instead of printing the SVG markup as a text blob. Successful renders return an `ImageContent` block plus a minimal `TextContent` companion describing what was rendered. Error responses are unchanged — the standard JSON envelope is still emitted as `TextContent` so the model can self-correct in a tool-use loop.
+
 ## [0.1.0] — 2026-05-15
 
 ### Added
@@ -84,5 +90,6 @@ Fourteen classifications shipped, with class names in en / fr / de / es / ru / p
 - mkdocs site: quickstart, built-in / custom-classification / i18n guides, PTFs, plotting, CLI, AI tools, units, and full API reference.
 - Polygon provenance notes (Tier 1 direct-from-literature vs. Tier 2 textbook-derived).
 
-[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.0

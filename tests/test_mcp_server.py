@@ -8,6 +8,7 @@ the heavy logic is covered by tests/test_ai.py.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -18,7 +19,9 @@ pytest.importorskip("mcp")
 from mcp.types import (
     CallToolRequest,
     CallToolRequestParams,
+    ImageContent,
     ListToolsRequest,
+    TextContent,
 )
 
 from pedotri.mcp_server import build_server
@@ -101,6 +104,56 @@ def test_call_tool_schema_validation_returns_is_error() -> None:
     result: Any = _await(handler(request))
     assert result.root.isError is True
     assert "less than" in result.root.content[0].text or "minimum" in result.root.content[0].text
+
+
+def test_call_tool_render_diagram_returns_image_content() -> None:
+    """render_diagram emits ImageContent (image/svg+xml) so MCP clients
+    can render the diagram inline rather than printing SVG markup."""
+    server = build_server()
+    handler = server.request_handlers[CallToolRequest]
+    request = CallToolRequest(
+        method="tools/call",
+        params=CallToolRequestParams(
+            name="render_diagram",
+            arguments={"classification": "USDA"},
+        ),
+    )
+    result: Any = _await(handler(request))
+    contents = result.root.content
+    # First block is the image, second is a minimal text companion.
+    assert len(contents) == 2
+    assert isinstance(contents[0], ImageContent)
+    assert contents[0].mimeType == "image/svg+xml"
+    svg_bytes = base64.standard_b64decode(contents[0].data)
+    assert svg_bytes.startswith(b"<svg")
+    assert svg_bytes.rstrip().endswith(b"</svg>")
+    # The text companion describes what was rendered but does not
+    # re-include the SVG markup.
+    assert isinstance(contents[1], TextContent)
+    companion = json.loads(contents[1].text)
+    assert companion["format"] == "svg"
+    assert companion["rendered_inline"] is True
+    assert companion["classification"] == "USDA"
+
+
+def test_call_tool_render_diagram_error_still_returns_json_envelope() -> None:
+    """When render_diagram errors (unknown classification), the response
+    is the standard JSON envelope, not an empty/broken ImageContent."""
+    server = build_server()
+    handler = server.request_handlers[CallToolRequest]
+    request = CallToolRequest(
+        method="tools/call",
+        params=CallToolRequestParams(
+            name="render_diagram",
+            arguments={"classification": "DOES_NOT_EXIST"},
+        ),
+    )
+    result: Any = _await(handler(request))
+    contents = result.root.content
+    assert len(contents) == 1
+    assert isinstance(contents[0], TextContent)
+    payload = json.loads(contents[0].text)
+    assert payload["error"] == "UnknownClassificationError"
 
 
 def test_call_tool_handler_error_returns_json_envelope() -> None:

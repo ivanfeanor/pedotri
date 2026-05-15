@@ -156,3 +156,13 @@ def test_wosten_rejects_zero_silt_clay_om() -> None:
 def test_wosten_rejects_nan() -> None:
     with pytest.raises(InvalidInputError, match="NaN"):
         wosten([60, float("nan")], [30, 30], [10, 10], organic_matter=2.5)
+
+
+def test_wosten_rejects_out_of_range_fraction() -> None:
+    with pytest.raises(InvalidInputError, match=r"\[0, 100\]"):
+        wosten(sand=120, silt=30, clay=10, organic_matter=2.5, bulk_density=1.4)
+
+
+def test_wosten_rejects_bulk_density_nan() -> None:
+    with pytest.raises(InvalidInputError, match="bulk_density"):
+        wosten(sand=60, silt=30, clay=10, organic_matter=2.5, bulk_density=float("nan"))

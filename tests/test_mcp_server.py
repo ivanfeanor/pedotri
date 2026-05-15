@@ -24,7 +24,7 @@ from mcp.types import (
     TextContent,
 )
 
-from pedotri.mcp_server import build_server
+from pedotri.mcp_server import _wrap_render_result, build_server
 
 if TYPE_CHECKING:
     from collections.abc import Awaitable
@@ -198,6 +198,14 @@ def test_call_tool_render_diagram_error_still_returns_json_envelope() -> None:
     assert isinstance(contents[0], TextContent)
     payload = json.loads(contents[0].text)
     assert payload["error"] == "UnknownClassificationError"
+
+
+def test_wrap_render_result_returns_none_for_non_string_content() -> None:
+    assert _wrap_render_result({"format": "png", "content": 123}) is None
+
+
+def test_wrap_render_result_returns_none_for_unknown_format() -> None:
+    assert _wrap_render_result({"format": "jpeg", "content": "abc"}) is None
 
 
 def test_call_tool_handler_error_returns_json_envelope() -> None:

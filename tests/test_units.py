@@ -67,6 +67,14 @@ def test_to_percent_passes_arrays() -> None:
     assert out.tolist() == [10.0, 20.0, 30.0]
 
 
+def test_to_percent_default_units_is_identity() -> None:
+    """``units="%"`` is the default; covers the no-op multiplicative factor."""
+    out = pedotri_units.to_percent(42)
+    assert out.tolist() == [42.0]
+    out_arr = pedotri_units.from_percent(np.array([10.0, 25.0]))
+    assert out_arr.tolist() == [10.0, 25.0]
+
+
 def test_unknown_units_raise() -> None:
     with pytest.raises(InvalidInputError, match="Unknown units"):
         pedotri_units.to_percent(50, "kg/kg")  # type: ignore[arg-type]

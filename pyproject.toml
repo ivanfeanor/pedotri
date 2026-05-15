@@ -181,6 +181,7 @@ filterwarnings = ["error"]
 [tool.coverage.run]
 source = ["pedotri"]
 branch = true
+omit = ["*/_types.py"]
 
 [tool.coverage.report]
 exclude_lines = [

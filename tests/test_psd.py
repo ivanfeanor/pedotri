@@ -7,7 +7,7 @@ import math
 import numpy as np
 import pytest
 
-from pedotri.errors import InvalidInputError
+from pedotri.errors import InvalidInputError, PedotriError
 from pedotri.psd import (
     SAND_SILT_CUTOFF_MM,
     convert,
@@ -170,6 +170,21 @@ def test_interpolate_psd_rejects_non_monotonic_sizes() -> None:
 def test_interpolate_psd_rejects_non_monotonic_passing() -> None:
     with pytest.raises(InvalidInputError, match="non-decreasing"):
         interpolate_psd(np.array([0.02, 0.05]), np.array([50, 35]), 0.03)
+
+
+def test_interpolate_psd_rejects_shape_mismatch() -> None:
+    with pytest.raises(InvalidInputError, match="1-D arrays"):
+        interpolate_psd(np.array([[0.02, 0.05]]), np.array([35.0, 50.0]), 0.03)
+
+
+def test_interpolate_psd_rejects_single_point() -> None:
+    with pytest.raises(InvalidInputError, match="at least two"):
+        interpolate_psd(np.array([0.05]), np.array([50.0]), 0.05)
+
+
+def test_cutoff_mm_rejects_unknown_standard() -> None:
+    with pytest.raises(PedotriError, match="Unknown standard"):
+        cutoff_mm("NOT_A_STANDARD")
 
 
 def test_constants_match_expected() -> None:

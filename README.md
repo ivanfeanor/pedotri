@@ -1,8 +1,12 @@
 # pedotri
 
-[![PyPI](https://img.shields.io/pypi/v/pedotri.svg)](https://pypi.org/project/pedotri/)
-[![Python](https://img.shields.io/pypi/pyversions/pedotri.svg)](https://pypi.org/project/pedotri/)
-[![License](https://img.shields.io/pypi/l/pedotri.svg)](https://github.com/ivanfeanor/pedotri/blob/main/LICENSE)
+[![PyPI](https://img.shields.io/pypi/v/pedotri.svg?cacheSeconds=300)](https://pypi.org/project/pedotri/)
+[![Python](https://img.shields.io/pypi/pyversions/pedotri.svg?cacheSeconds=300)](https://pypi.org/project/pedotri/)
+[![License](https://img.shields.io/pypi/l/pedotri.svg?cacheSeconds=300)](https://github.com/ivanfeanor/pedotri/blob/main/LICENSE)
+[![CI](https://github.com/ivanfeanor/pedotri/actions/workflows/ci.yml/badge.svg)](https://github.com/ivanfeanor/pedotri/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/ivanfeanor/pedotri/branch/main/graph/badge.svg)](https://codecov.io/gh/ivanfeanor/pedotri)
+[![Docs](https://img.shields.io/badge/docs-online-blue.svg)](https://ivanfeanor.github.io/pedotri/)
+[![Downloads](https://img.shields.io/pypi/dm/pedotri.svg?cacheSeconds=300)](https://pypi.org/project/pedotri/)
 
 Modern, extensible soil texture classification and pedotransfer functions for Python.
 
@@ -196,7 +200,7 @@ for block in response.content:
         # → {"key": "sandy_clay_loam", "name": "sandy clay loam", "group": "moderately_fine", ...}
 ```
 
-Eight tools are exposed: `classify_soil`, `classify_soil_1d`, `list_classifications`, `classification_info`, `saxton_rawls`, `wosten`, `convert_particle_size`, `render_diagram`. Errors come back as structured envelopes (not raised) so the model can self-correct in a tool-use loop.
+Eight tools are exposed: `classify_soil`, `classify_soil_1d`, `list_classifications`, `classification_info`, `saxton_rawls`, `wosten`, `convert_particle_size`, `render_diagram`. Errors come back as structured envelopes (not raised) so the model can self-correct in a tool-use loop. `render_diagram` returns an inline image (PNG by default, or pass `format="svg"`) so MCP clients like Claude Desktop and Cursor display the triangle directly in chat.
 
 ### Claude Desktop (MCP)
 

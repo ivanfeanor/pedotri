@@ -17,6 +17,8 @@ import matplotlib
 import plotly.graph_objects as go
 from matplotlib.figure import Figure
 
+import pedotri.plot
+from pedotri.errors import PedotriError
 from pedotri.plot import render_mpl, render_plotly
 
 _ = matplotlib  # keep the import alive for matplotlib's side effects
@@ -83,3 +85,24 @@ def test_render_plotly_kachinsky_one_dimensional() -> None:
 def test_render_plotly_unknown_classification_raises() -> None:
     with pytest.raises(pedotri.UnknownClassificationError):
         render_plotly("NOT_REAL")
+
+
+def test_render_plotly_kachinsky_with_points() -> None:
+    """1-D classifications accept points as either scalars or (x,) pairs and
+    render them as overlay markers on the horizontal banded axis."""
+    fig = render_plotly("KACHINSKY", points=[(35,), (12,)], point_labels=["A", "B"])
+    traces = list(fig.data)
+    assert traces[-1].name == "samples"
+    assert list(traces[-1].x) == [35.0, 12.0]
+
+
+def test_render_plotly_rejects_2d_point_with_wrong_arity() -> None:
+    with pytest.raises(PedotriError, match="2-D diagram"):
+        render_plotly("USDA", points=[(40, 25, 35)])
+
+
+def test_plot_module_getattr_rejects_unknown_attribute() -> None:
+    """``pedotri.plot.__getattr__`` lazily imports recognised backends and
+    raises AttributeError for anything else."""
+    with pytest.raises(AttributeError, match="no attribute"):
+        _ = pedotri.plot.does_not_exist

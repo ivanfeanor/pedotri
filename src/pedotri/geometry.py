@@ -68,10 +68,20 @@ def points_in_polygon(points: FloatArray, polygon: FloatArray) -> np.ndarray:
     crosses = crosses_y & (x < x_int)
     inside = (crosses.sum(axis=1) % 2).astype(bool)
 
-    # Also include points that lie exactly on a polygon edge — the
-    # ray-cast test is half-open and would otherwise drop them.
-    on_edge = _points_on_edge(points, closed)
-    return np.asarray(inside | on_edge)
+    # The ray-cast above is half-open and silently drops points that
+    # land exactly on a polygon edge. Run the explicit on-edge test
+    # only for the points the ray-cast said were outside — points
+    # already declared inside are already correct and the on-edge
+    # check is the more expensive of the two, so this avoids the
+    # heavy MxN allocation when half (or more) of the candidates
+    # were inside.
+    if inside.all():
+        return np.asarray(inside)
+    outside_idx = np.flatnonzero(~inside)
+    on_edge = _points_on_edge(points[outside_idx], closed)
+    if on_edge.any():
+        inside[outside_idx[on_edge]] = True
+    return np.asarray(inside)
 
 
 def _points_on_edge(points: FloatArray, closed_poly: FloatArray) -> np.ndarray:

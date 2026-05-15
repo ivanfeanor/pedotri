@@ -26,7 +26,10 @@ repos:
       - id: check-yaml
       - id: check-toml
       - id: check-added-large-files
-        args: [--maxkb=500]
+        # Test fixture: SoilGrids 2.0 tiles for central France
+        # (sand/silt/clay at 0-5 cm depth) are ~640 KB each — they
+        # drive the GeoTIFF integration test in tests/test_raster.py.
+        args: [--maxkb=700]
       - id: check-merge-conflict
       - id: check-case-conflict
       - id: mixed-line-ending

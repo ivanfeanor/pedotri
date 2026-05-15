@@ -45,6 +45,22 @@ class ClassifyResult:
             the magnitude, the deeper the point sits inside its class.
             For 1-D classifications, this is the distance to the nearest
             interval endpoint. ``nan`` if the point is unclassified.
+        probabilities: Mapping from class key to posterior probability
+            when uncertainty information was supplied. ``None`` for the
+            deterministic path. Keys with non-zero probability only; the
+            unclassified mass (if any) is stored separately in
+            :attr:`unclassified_probability`.
+        entropy: Shannon entropy of :attr:`probabilities` in nats. ``None``
+            for the deterministic path. Maximum value is ``log(n_classes)``.
+        confidence: Single scalar in ``[0, 1]`` summarizing how confident
+            the classification is. For the distance method, this is the
+            normal CDF of ``distance / σ_effective`` — points sitting
+            many σ inside their class score near 1.0; points on a boundary
+            score 0.5. For the Monte Carlo method, this is the modal-class
+            probability. ``None`` for the deterministic path.
+        unclassified_probability: Fraction of Monte Carlo samples that
+            fell outside every class polygon. ``None`` for the distance
+            and deterministic paths.
     """
 
     key: str | None
@@ -52,20 +68,35 @@ class ClassifyResult:
     group: str | None
     parent: str | None
     distance: float
+    probabilities: dict[str, float] | None = None
+    entropy: float | None = None
+    confidence: float | None = None
+    unclassified_probability: float | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serializable dict representation.
 
         ``nan`` is mapped to ``None`` so the result encodes cleanly with
-        the standard library ``json`` module.
+        the standard library ``json`` module. Uncertainty-related fields
+        are included only when populated, to keep the deterministic
+        output unchanged.
         """
-        return {
+        out: dict[str, Any] = {
             "key": self.key,
             "name": self.name,
             "group": self.group,
             "parent": self.parent,
             "distance": None if math.isnan(self.distance) else self.distance,
         }
+        if self.probabilities is not None:
+            out["probabilities"] = dict(self.probabilities)
+        if self.entropy is not None:
+            out["entropy"] = self.entropy
+        if self.confidence is not None:
+            out["confidence"] = self.confidence
+        if self.unclassified_probability is not None:
+            out["unclassified_probability"] = self.unclassified_probability
+        return out
 
 
 @overload
@@ -171,6 +202,20 @@ def classify(
 ) -> Any: ...
 
 
+@overload
+def classify(
+    *args: Any,
+    classification: str | Classification | None = ...,
+    locale: Locale | None = ...,
+    detailed: bool = ...,
+    units: str = ...,
+    method: str = ...,
+    n_samples: int = ...,
+    seed: Any = ...,
+    **kwargs: Any,
+) -> Any: ...
+
+
 def classify(
     *args: Any,
     **kwargs: Any,
@@ -215,6 +260,25 @@ def classify(
       Applied uniformly to every fraction input. Use ``"g/kg"`` when
       your lab reports sand / clay / silt as g/kg (common in European
       soil chemistry), or ``"g/g"`` for the 0-1 mass-fraction convention.
+    - **<axis>_uncertainty** — optional keyword per axis (e.g.
+      ``sand_uncertainty``, ``clay_uncertainty``). Accepts a
+      :class:`~pedotri.uncertainty.Quantiles` (recommended), a scalar
+      or array σ, or — for backwards compatibility — a bare
+      ``(Q0.05, Q0.95)`` 2-tuple (emits a ``DeprecationWarning``).
+      When any uncertainty kwarg is supplied, ``detailed`` is
+      automatically promoted to ``True`` so probabilities and
+      confidence can be returned, and the function returns a
+      :class:`ClassifyResult` regardless of how ``detailed`` was
+      passed.
+    - **method** — ``"distance"`` (default) or ``"monte_carlo"``. Only
+      relevant when uncertainty kwargs are supplied. The distance
+      method compares boundary distance to the input σ for a single
+      confidence score; Monte Carlo draws ``n_samples`` realizations
+      and returns a full probability distribution.
+    - **n_samples** — int, default ``1000``. Number of Monte Carlo
+      draws per input point.
+    - **seed** — optional int or ``np.random.Generator``. Seeds the
+      Monte Carlo sampler for reproducibility.
 
     Returns the matched class key (or localized name, or
     :class:`ClassifyResult`) for scalar input, or a list of those
@@ -231,21 +295,126 @@ def classify(
     locale: Locale | None = kwargs.pop("locale", None)
     detailed: bool = kwargs.pop("detailed", False)
     units: str = kwargs.pop("units", "%")
+    method: str = kwargs.pop("method", "distance")
+    n_samples: int = kwargs.pop("n_samples", 1000)
+    seed: Any = kwargs.pop("seed", None)
+
+    uncertainty_kwargs: dict[str, Any] = {}
+    for key in list(kwargs):
+        if key.endswith("_uncertainty"):
+            uncertainty_kwargs[key[: -len("_uncertainty")]] = kwargs.pop(key)
+
     cls_obj, fractions = _parse_arguments(args, classification, kwargs)
+
+    if uncertainty_kwargs:
+        unknown = [a for a in uncertainty_kwargs if a not in cls_obj.axes]
+        if unknown:
+            raise TypeError(
+                f"Classification {cls_obj.key!r}: unknown uncertainty kwarg(s) "
+                f"{[a + '_uncertainty' for a in unknown]!r}. Valid axes are "
+                f"{list(cls_obj.axes)!r}."
+            )
+        # Uncertainty data is only meaningful when probabilities /
+        # confidence / entropy can be reported, so we auto-promote
+        # ``detailed=True`` here. The return type accordingly switches
+        # from ``str`` to :class:`ClassifyResult` — the input shape
+        # signals this clearly. Without auto-promote, callers had to
+        # write ``detailed=True`` on every uncertainty call, which was
+        # pure boilerplate that got forgotten and surfaced a confusing
+        # error.
+        detailed = True
+        if method not in ("distance", "monte_carlo"):
+            raise InvalidInputError(
+                f"Unknown classification method {method!r}. "
+                "Use 'distance' (default) or 'monte_carlo'."
+            )
+
     if units != "%":
         fractions = [_convert_inputs(f, units) for f in fractions]
     arrs, scalar = _coerce_fraction_arrays(fractions, cls_obj.axes)
 
-    codes, distances = _classify(arrs, cls_obj, with_distance=detailed)
+    sigmas = _resolve_uncertainty(uncertainty_kwargs, cls_obj.axes, arrs[0].shape)
+
+    extras: _Extras
+    if sigmas is None:
+        codes, distances = _classify(arrs, cls_obj, with_distance=detailed)
+        extras = _Extras()
+    elif method == "distance":
+        codes, distances = _classify(arrs, cls_obj, with_distance=True)
+        extras = _Extras(confidences=_distance_confidences(distances, sigmas))
+    else:
+        codes, distances = _classify(arrs, cls_obj, with_distance=True)
+        extras = _monte_carlo_extras(arrs, sigmas, cls_obj, n_samples, seed)
 
     classes = cls_obj.classes
     out: list[str | None] | list[ClassifyResult]
     if detailed:
         loc = locale or cls_obj.default_locale
-        out = _build_detailed(codes, distances, classes, loc)
+        out = _build_detailed(codes, distances, classes, loc, extras)
     else:
         out = _build_labels(codes, classes, locale)
     return out[0] if scalar else out
+
+
+def classify_all(
+    sand: float | int,
+    clay: float | int,
+    *,
+    locale: Locale | None = None,
+    schemes: list[str] | None = None,
+    units: str = "%",
+) -> dict[str, ClassifyResult]:
+    """Classify the same (sand, clay) point under every 2-axis classification.
+
+    This mirrors the common agronomic-API pattern of presenting one
+    sample against several regional taxonomies side-by-side (USDA for
+    USA, FAO for international, GEPPA for France, KA5 for Germany, …)
+    instead of forcing the caller to issue N separate
+    :func:`classify` calls.
+
+    Args:
+        sand: Sand fraction (scalar). See ``units``.
+        clay: Clay fraction (scalar). See ``units``.
+        locale: Optional locale tag forwarded to each classification.
+            ``None`` keeps the stable class key as ``.name``.
+        schemes: Restrict to a subset of classification keys
+            (e.g. ``["USDA", "FAO", "GEPPA"]``). ``None`` runs every
+            registered 2-axis classification.
+        units: Same as :func:`classify` (``"%"``, ``"g/kg"``, ``"g/g"``).
+
+    Returns:
+        Dict mapping classification key to :class:`ClassifyResult`.
+        1-axis classifications such as ``KACHINSKY`` are skipped (their
+        axis differs from sand/clay), so the result includes only
+        classifications that consume the sand-clay simplex.
+
+    Example::
+
+        >>> import pedotri
+        >>> all_classes = pedotri.classify_all(sand=27, clay=45)
+        >>> {k: v.key for k, v in all_classes.items()}
+        {'USDA': 'clay', 'FAO': 'fine', 'GEPPA': '...', ...}
+    """
+    from pedotri.registry import get_classification, list_classifications
+
+    if schemes is None:
+        schemes = list_classifications()
+
+    out: dict[str, ClassifyResult] = {}
+    for key in schemes:
+        cls_obj = get_classification(key)
+        if len(cls_obj.axes) != 2:
+            continue
+        result = classify(
+            sand=float(sand),
+            clay=float(clay),
+            classification=cls_obj,
+            detailed=True,
+            locale=locale,
+            units=units,
+        )
+        out[key] = result
+    return out
 
 
 # --- Argument parsing ----------------------------------------------------
@@ -477,16 +646,30 @@ def _build_detailed(
     distances: FloatArray,
     classes: tuple[TextureClass, ...],
     locale: Locale,
+    extras: _Extras,
 ) -> list[ClassifyResult]:
-    """Map a vector of class indices + distances to :class:`ClassifyResult`s."""
+    """Map class indices + distances (+ optional uncertainty extras) to results."""
     names = [cls.name(locale) for cls in classes]
     out: list[ClassifyResult] = []
     code_list = codes.tolist()
     dist_list = distances.tolist()
-    unclassified = ClassifyResult(key=None, name="", group=None, parent=None, distance=float("nan"))
-    for c, d in zip(code_list, dist_list, strict=True):
+    has_extras = extras.has_any()
+    for i, (c, d) in enumerate(zip(code_list, dist_list, strict=True)):
+        extras_i = extras.at(i) if has_extras else _ExtrasView()
         if c < 0:
-            out.append(unclassified)
+            out.append(
+                ClassifyResult(
+                    key=None,
+                    name="",
+                    group=None,
+                    parent=None,
+                    distance=float("nan"),
+                    probabilities=extras_i.probabilities,
+                    entropy=extras_i.entropy,
+                    confidence=extras_i.confidence,
+                    unclassified_probability=extras_i.unclassified_probability,
+                )
+            )
             continue
         cls = classes[c]
         out.append(
@@ -496,6 +679,185 @@ def _build_detailed(
                 group=cls.group,
                 parent=cls.parent,
                 distance=d,
+                probabilities=extras_i.probabilities,
+                entropy=extras_i.entropy,
+                confidence=extras_i.confidence,
+                unclassified_probability=extras_i.unclassified_probability,
             )
         )
     return out
+
+
+# --- Uncertainty plumbing ------------------------------------------------
+
+
+@dataclass(slots=True)
+class _ExtrasView:
+    """Per-point slice of the optional uncertainty extras."""
+
+    probabilities: dict[str, float] | None = None
+    entropy: float | None = None
+    confidence: float | None = None
+    unclassified_probability: float | None = None
+
+
+@dataclass(slots=True)
+class _Extras:
+    """Vectorized container for the optional per-point uncertainty outputs.
+
+    The three array fields are populated only by paths that produce
+    them. ``probabilities_index`` is the resolved class key per column
+    of ``probabilities``; it's stored once rather than re-created per
+    point. Distance method fills ``confidences`` only; Monte Carlo
+    fills all four.
+    """
+
+    confidences: FloatArray | None = None
+    probabilities: FloatArray | None = None  # shape (n_points, n_classes)
+    probabilities_index: list[str] | None = None  # class keys
+    entropies: FloatArray | None = None
+    unclassified_probs: FloatArray | None = None
+
+    def has_any(self) -> bool:
+        return (
+            self.confidences is not None
+            or self.probabilities is not None
+            or self.entropies is not None
+            or self.unclassified_probs is not None
+        )
+
+    def at(self, i: int) -> _ExtrasView:
+        view = _ExtrasView()
+        if self.confidences is not None:
+            v = float(self.confidences[i])
+            view.confidence = None if math.isnan(v) else v
+        if self.probabilities is not None and self.probabilities_index is not None:
+            row = self.probabilities[i]
+            view.probabilities = {
+                self.probabilities_index[j]: float(row[j])
+                for j in range(row.shape[0])
+                if row[j] > 0
+            }
+            # For Monte Carlo, modal-class probability also serves as
+            # the confidence — overwrite whatever the caller had so the
+            # field stays single-source-of-truth for the active method.
+            if row.size:
+                view.confidence = float(row.max())
+        if self.entropies is not None:
+            v = float(self.entropies[i])
+            view.entropy = None if math.isnan(v) else v
+        if self.unclassified_probs is not None:
+            view.unclassified_probability = float(self.unclassified_probs[i])
+        return view
+
+
+def _resolve_uncertainty(
+    uncertainty_kwargs: dict[str, Any],
+    axes: tuple[str, ...],
+    shape: tuple[int, ...],
+) -> list[FloatArray] | None:
+    """Build per-axis σ arrays in axis order, or return ``None`` if no kwargs.
+
+    Axes without an uncertainty entry get an all-zero σ — they behave
+    deterministically while letting the other axes carry uncertainty.
+    The output broadcasts each user value to the input point shape so
+    downstream code can index uniformly.
+    """
+    from pedotri.uncertainty import _parse_uncertainty
+
+    if not uncertainty_kwargs:
+        return None
+    sigmas: list[FloatArray] = []
+    for axis in axes:
+        raw = uncertainty_kwargs.get(axis)
+        if raw is None:
+            sigmas.append(np.zeros(shape, dtype=np.float64))
+            continue
+        parsed = _parse_uncertainty(raw)
+        if parsed is None:
+            sigmas.append(np.zeros(shape, dtype=np.float64))
+            continue
+        try:
+            broadcast = np.broadcast_to(parsed, shape).astype(np.float64, copy=True)
+        except ValueError as exc:
+            raise InvalidInputError(
+                f"{axis}_uncertainty shape {parsed.shape} cannot broadcast to "
+                f"fraction shape {shape}."
+            ) from exc
+        sigmas.append(broadcast)
+    return sigmas
+
+
+def _distance_confidences(distances: FloatArray, sigmas: list[FloatArray]) -> FloatArray:
+    """Per-point confidence via Φ(distance / σ_effective).
+
+    σ_effective is the quadratic mean across axes — an isotropic proxy
+    when the boundary orientation is unknown. NaN distances (unclassified
+    points) and zero σ produce NaN confidences.
+    """
+    stacked = np.stack(sigmas, axis=0)
+    sigma_eff = np.sqrt(np.mean(stacked * stacked, axis=0))
+    with np.errstate(divide="ignore", invalid="ignore"):
+        z = distances / sigma_eff
+    conf = 0.5 * (1.0 + _erf_array(z / np.sqrt(2.0)))
+    conf = np.where(sigma_eff > 0, conf, np.nan)
+    conf = np.where(np.isnan(distances), np.nan, conf)
+    return conf
+
+
+def _erf_array(x: FloatArray) -> FloatArray:
+    """Vectorized ``erf`` — delegated to :mod:`pedotri.uncertainty`."""
+    from pedotri.uncertainty import _erf_array as _erf_impl
+
+    return _erf_impl(x)
+
+
+def _monte_carlo_extras(
+    arrs: list[FloatArray],
+    sigmas: list[FloatArray],
+    c: Classification,
+    n_samples: int,
+    seed: Any,
+) -> _Extras:
+    """Sample ``n_samples`` realizations per point, classify, tally probs.
+
+    For 2-axis classifications, sampling respects the compositional
+    constraint ``sand + clay ≤ 100`` via the helper in
+    :mod:`pedotri.uncertainty`. For 1-axis classifications, the single
+    axis is sampled as a clipped truncated normal.
+    """
+    from pedotri.uncertainty import (
+        _aggregate_class_probabilities,
+        sample_compositional,
+        sample_truncated_normal,
+        shannon_entropy,
+    )
+
+    if n_samples < 1:
+        raise InvalidInputError(f"n_samples must be >= 1, got {n_samples}.")
+    rng = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+
+    if len(c.axes) == 2:
+        sand_samples, clay_samples = sample_compositional(
+            arrs[0], sigmas[0], arrs[1], sigmas[1], n_samples, rng=rng
+        )
+        flat = [sand_samples.reshape(-1), clay_samples.reshape(-1)]
+    else:
+        samples = sample_truncated_normal(arrs[0], sigmas[0], n_samples, rng=rng)
+        flat = [samples.reshape(-1)]
+
+    flat_codes, _ = _classify(flat, c, with_distance=False)
+    n_points = arrs[0].size
+    codes_grid = flat_codes.reshape(n_points, n_samples)
+
+    n_classes = len(c.classes)
+    probs, unclass_rate = _aggregate_class_probabilities(codes_grid, n_classes)
+    entropies = shannon_entropy(probs)
+
+    class_keys = [cls.key for cls in c.classes]
+    return _Extras(
+        probabilities=probs,
+        probabilities_index=class_keys,
+        entropies=entropies,
+        unclassified_probs=unclass_rate,
+    )

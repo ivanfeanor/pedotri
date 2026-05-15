@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import base64 as _base64
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pedotri
 from pedotri.errors import (
@@ -56,6 +56,7 @@ def tool_schemas() -> list[dict[str, Any]]:
     return [
         _classify_soil_schema(),
         _classify_soil_1d_schema(),
+        _classify_point_schema(),
         _list_classifications_schema(),
         _classification_info_schema(),
         _saxton_rawls_schema(),
@@ -162,6 +163,117 @@ def _classify_soil_1d_schema() -> dict[str, Any]:
                 "units": _units_schema(),
             },
             "required": ["value", "classification"],
+        },
+    }
+
+
+def _classify_point_schema() -> dict[str, Any]:
+    return {
+        "name": "classify_point",
+        "description": (
+            "Classify a soil texture sample with optional uncertainty. "
+            "Two input modes: (a) explicit sand and clay values (with "
+            "optional sand_q05/q95 and clay_q05/q95 quantiles); (b) lon "
+            "and lat coordinates, in which case SoilGrids 2.0 is queried "
+            "for sand and clay mean+Q05+Q95 at the given depth and used "
+            "to drive an uncertainty-aware classification. Passing both "
+            "modes simultaneously is an error. When uncertainty data is "
+            "available, the result includes per-class probabilities, "
+            "Shannon entropy, and a modal-class confidence score."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sand": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Sand fraction in percent (0-100).",
+                },
+                "clay": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Clay fraction in percent (0-100).",
+                },
+                "sand_q05": {
+                    "type": "number",
+                    "description": (
+                        "5th percentile of sand fraction in percent. "
+                        "Pair with sand_q95 to drive uncertainty."
+                    ),
+                },
+                "sand_q95": {
+                    "type": "number",
+                    "description": "95th percentile of sand fraction in percent.",
+                },
+                "clay_q05": {
+                    "type": "number",
+                    "description": "5th percentile of clay fraction in percent.",
+                },
+                "clay_q95": {
+                    "type": "number",
+                    "description": "95th percentile of clay fraction in percent.",
+                },
+                "lon": {
+                    "type": "number",
+                    "minimum": -180,
+                    "maximum": 180,
+                    "description": (
+                        "Longitude in EPSG:4326 (decimal degrees east). "
+                        "When set, SoilGrids 2.0 is fetched for this "
+                        "point (cached on disk by coordinate)."
+                    ),
+                },
+                "lat": {
+                    "type": "number",
+                    "minimum": -90,
+                    "maximum": 90,
+                    "description": "Latitude in EPSG:4326 (decimal degrees north).",
+                },
+                "depth": {
+                    "type": "string",
+                    "enum": [
+                        "0-5cm",
+                        "5-15cm",
+                        "15-30cm",
+                        "30-60cm",
+                        "60-100cm",
+                        "100-200cm",
+                    ],
+                    "default": "0-5cm",
+                    "description": "SoilGrids depth interval (only used in lon/lat mode).",
+                },
+                "classification": {
+                    "type": "string",
+                    "default": "USDA",
+                    "description": (
+                        "2-axis classification key. Defaults to USDA. "
+                        "See list_classifications for the full set."
+                    ),
+                },
+                "locale": {"type": "string", "description": "Optional locale tag."},
+                "method": {
+                    "type": "string",
+                    "enum": ["distance", "monte_carlo"],
+                    "default": "distance",
+                    "description": (
+                        "Uncertainty method (ignored when no uncertainty "
+                        "data is available). 'distance' is fast and "
+                        "returns a single confidence score; 'monte_carlo' "
+                        "returns the full probability distribution over "
+                        "classes plus Shannon entropy."
+                    ),
+                },
+                "n_samples": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1000,
+                    "description": "Number of Monte-Carlo draws when method='monte_carlo'.",
+                },
+                "seed": {
+                    "type": "integer",
+                    "description": "Optional RNG seed for reproducible Monte-Carlo runs.",
+                },
+            },
         },
     }
 
@@ -460,7 +572,112 @@ def _h_classify_soil(args: dict[str, Any]) -> dict[str, Any]:
         locale=locale,
         units=units,
     )
-    return result.to_dict()
+    return cast("dict[str, Any]", result.to_dict())
+
+
+def _h_classify_point(args: dict[str, Any]) -> dict[str, Any]:
+    """Smart point-classification handler.
+
+    Three modes — chosen by the inputs the caller supplies:
+
+    - ``lon`` + ``lat``: SoilGrids 2.0 is queried (with on-disk caching)
+      and the returned mean + (Q05, Q95) drive an uncertainty-aware
+      classification.
+    - ``sand`` + ``clay`` (+ optional ``*_q05`` / ``*_q95``): explicit
+      values, with uncertainty when the quantile pairs are supplied.
+    - Mixing the two modes raises an error.
+    """
+    has_coords = ("lon" in args) or ("lat" in args)
+    has_explicit = ("sand" in args) or ("clay" in args)
+    if has_coords and has_explicit:
+        raise InvalidInputError(
+            "classify_point accepts either (sand, clay) or (lon, lat), not both."
+        )
+    if not has_coords and not has_explicit:
+        raise InvalidInputError(
+            "classify_point needs either explicit (sand, clay) values or "
+            "a (lon, lat) coordinate to fetch from SoilGrids."
+        )
+
+    classification = args.get("classification", "USDA")
+    locale = args.get("locale")
+    method = args.get("method", "distance")
+    n_samples = int(args.get("n_samples", 1000))
+    seed = args.get("seed")
+
+    if has_coords:
+        lon = _require(args, "lon", (int, float))
+        lat = _require(args, "lat", (int, float))
+        depth = args.get("depth", "0-5cm")
+        from pedotri.sources import soilgrids
+        from pedotri.uncertainty import Quantiles
+
+        point = soilgrids.fetch_point(float(lon), float(lat), depths=(depth,))
+        sand_m, sand_q05, sand_q95, clay_m, clay_q05, clay_q95 = point.sand_clay(depth)
+        result = pedotri.classify(
+            sand=sand_m,
+            clay=clay_m,
+            sand_uncertainty=Quantiles(sand_q05, sand_q95),
+            clay_uncertainty=Quantiles(clay_q05, clay_q95),
+            classification=classification,
+            locale=locale,
+            method=method,
+            n_samples=n_samples,
+            seed=seed,
+        )
+        out = cast("dict[str, Any]", result.to_dict())
+        out["source"] = {
+            "name": "soilgrids",
+            "lon": point.lon,
+            "lat": point.lat,
+            "depth": depth,
+            "cached": point.cached,
+            "values": {
+                "sand": {"mean": sand_m, "q05": sand_q05, "q95": sand_q95},
+                "clay": {"mean": clay_m, "q05": clay_q05, "q95": clay_q95},
+            },
+        }
+        return out
+
+    sand = _require(args, "sand", (int, float))
+    clay = _require(args, "clay", (int, float))
+    from pedotri.uncertainty import Quantiles
+
+    classify_kwargs: dict[str, Any] = {}
+    if "sand_q05" in args or "sand_q95" in args:
+        if "sand_q05" not in args or "sand_q95" not in args:
+            raise InvalidInputError("sand_q05 and sand_q95 must be supplied together.")
+        classify_kwargs["sand_uncertainty"] = Quantiles(
+            float(args["sand_q05"]), float(args["sand_q95"])
+        )
+    if "clay_q05" in args or "clay_q95" in args:
+        if "clay_q05" not in args or "clay_q95" not in args:
+            raise InvalidInputError("clay_q05 and clay_q95 must be supplied together.")
+        classify_kwargs["clay_uncertainty"] = Quantiles(
+            float(args["clay_q05"]), float(args["clay_q95"])
+        )
+
+    if classify_kwargs:
+        result = pedotri.classify(
+            sand=float(sand),
+            clay=float(clay),
+            classification=classification,
+            locale=locale,
+            method=method,
+            n_samples=n_samples,
+            seed=seed,
+            **classify_kwargs,
+        )
+    else:
+        # No uncertainty data → deterministic classification path.
+        result = pedotri.classify(
+            float(sand),
+            float(clay),
+            classification,
+            detailed=True,
+            locale=locale,
+        )
+    return cast("dict[str, Any]", result.to_dict())
 
 
 def _h_classify_soil_1d(args: dict[str, Any]) -> dict[str, Any]:
@@ -471,7 +688,7 @@ def _h_classify_soil_1d(args: dict[str, Any]) -> dict[str, Any]:
     result = pedotri.classify(
         float(value), classification, detailed=True, locale=locale, units=units
     )
-    return result.to_dict()
+    return cast("dict[str, Any]", result.to_dict())
 
 
 def _h_list_classifications(args: dict[str, Any]) -> dict[str, Any]:
@@ -608,7 +825,7 @@ def _try_render_png(
     # import so a bare `pip install pedotri` doesn't fail on this
     # module.
     try:
-        from pedotri.plot import render_png  # noqa: PLC0415
+        from pedotri.plot import render_png
     except ModuleNotFoundError:
         return None
     return render_png(
@@ -637,6 +854,7 @@ _Handler = Callable[[dict[str, Any]], dict[str, Any]]
 _HANDLERS: dict[str, _Handler] = {
     "classify_soil": _h_classify_soil,
     "classify_soil_1d": _h_classify_soil_1d,
+    "classify_point": _h_classify_point,
     "list_classifications": _h_list_classifications,
     "classification_info": _h_classification_info,
     "saxton_rawls": _h_saxton_rawls,

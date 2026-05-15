@@ -152,7 +152,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004", "S101", "PLC0415", "RUF002"]
+"tests/**" = ["PLR2004", "S101", "PLC0415", "RUF001", "RUF002", "RUF003", "RUF043"]
 # Example scripts prioritize readability over strict-lint compliance.
 # Lazy matplotlib imports, "×" for visual clarity in titles / docstrings,
 # and unstrict zip() are deliberate.
@@ -166,14 +166,26 @@ ignore = [
 # builder function so `import pedotri` always works without the SDK.
 "src/pedotri/mcp_server.py" = ["PLC0415"]
 # rasterio is an optional extra; raster.py defers the import so the
-# core package still loads without GDAL on the system.
-"src/pedotri/raster.py" = ["PLC0415"]
+# core package still loads without GDAL on the system. RUF001-003 cover
+# the scientific notation (σ, ×, −) in docstrings, mirroring the policy
+# applied to uncertainty.py and zonal.py for the same reason.
+"src/pedotri/raster.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
 # bench.py optionally pulls in soiltexture for the head-to-head
 # benchmark; the import is conditional on user installation.
 "src/pedotri/bench.py" = ["PLC0415"]
 # interp.py optionally pulls in pykrige + scipy; lazy import so the
 # core package loads without them.
 "src/pedotri/interp.py" = ["PLC0415"]
+# The 0.3 surface uses scientific notation (σ, Q05/Q95, ×, −) heavily
+# in docstrings and module-level prose, and lazy-imports optional
+# extras (rasterio, urllib.error wrappers, SoilGrids fetcher). Same
+# rationale as the modules above.
+"src/pedotri/uncertainty.py" = ["RUF001", "RUF002", "RUF003"]
+"src/pedotri/zonal.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
+"src/pedotri/classifier.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
+"src/pedotri/ai.py" = ["PLC0415"]
+"src/pedotri/sources/soilgrids.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
+"src/pedotri/sources/worldcover.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 docstring-code-format = true

@@ -21,7 +21,8 @@ from __future__ import annotations
 
 import contextlib as _contextlib
 
-from pedotri.classifier import ClassifyResult, classify
+from pedotri import sources, uncertainty, zonal
+from pedotri.classifier import ClassifyResult, classify, classify_all
 from pedotri.errors import (
     ClassificationError,
     InvalidInputError,
@@ -37,6 +38,7 @@ from pedotri.registry import (
     unregister_classification,
 )
 from pedotri.schema import Classification, TextureClass
+from pedotri.uncertainty import Quantiles
 
 try:
     from importlib.metadata import PackageNotFoundError
@@ -63,15 +65,20 @@ __all__ = [
     "ClassifyResult",
     "InvalidInputError",
     "PedotriError",
+    "Quantiles",
     "TextureClass",
     "TextureDiagram",
     "UnknownClassificationError",
     "__version__",
     "classify",
+    "classify_all",
     "get_classification",
     "list_classifications",
     "load_classification",
     "register_classification",
     "render_svg",
+    "sources",
+    "uncertainty",
     "unregister_classification",
+    "zonal",
 ]

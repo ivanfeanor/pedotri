@@ -109,7 +109,7 @@ def test_classify_with_explicit_classification_object() -> None:
 
 def test_classify_rejects_wrong_classification_type() -> None:
     with pytest.raises(TypeError, match="must be a str or Classification"):
-        pedotri.classify(13, 50, 42)  # type: ignore[call-overload]
+        pedotri.classify(13, 50, 42)
 
 
 def test_unknown_classification_error_without_available_list() -> None:
@@ -136,3 +136,42 @@ def test_canonical_usda_reference_points() -> None:
     assert pedotri.classify(70, 10, "USDA") == "sandy_loam"
     # Silt loam: sand=20, clay=15, silt=65
     assert pedotri.classify(20, 15, "USDA") == "silt_loam"
+
+
+# --- classify_all --------------------------------------------------------
+
+
+def test_classify_all_covers_every_2axis_classification() -> None:
+    out = pedotri.classify_all(sand=27, clay=45)
+    # All 2-axis built-ins should appear.
+    assert "USDA" in out
+    assert "FAO" in out
+    assert "GEPPA" in out
+    # 1-axis classifications must be excluded.
+    assert "KACHINSKY" not in out
+    assert "RUS2004" not in out
+    # Every result is a ClassifyResult.
+    for result in out.values():
+        assert isinstance(result, pedotri.ClassifyResult)
+        assert result.key is not None  # 27/45 lies inside every triangle
+
+
+def test_classify_all_with_explicit_schemes() -> None:
+    out = pedotri.classify_all(sand=27, clay=45, schemes=["USDA", "FAO"])
+    assert set(out) == {"USDA", "FAO"}
+    assert out["USDA"].key == "clay"
+    assert out["FAO"].key == "fine"
+
+
+def test_classify_all_localized_names() -> None:
+    out = pedotri.classify_all(sand=27, clay=45, locale="fr", schemes=["USDA", "GEPPA"])
+    # USDA's French class for (27, 45) is "argile".
+    assert out["USDA"].name == "argile"
+    # GEPPA returns a French class label.
+    assert out["GEPPA"].name
+
+
+def test_classify_all_silently_skips_1axis_when_listed() -> None:
+    """Explicitly listing a 1-axis classification is silently skipped, not an error."""
+    out = pedotri.classify_all(sand=27, clay=45, schemes=["USDA", "KACHINSKY", "FAO"])
+    assert set(out) == {"USDA", "FAO"}

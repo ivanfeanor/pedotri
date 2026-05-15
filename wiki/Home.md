@@ -9,6 +9,9 @@ If you're new, start with the [README](https://github.com/ivanfeanor/pedotri/blo
 | See the kind of maps pedotri actually produces | [Examples-gallery](Examples-gallery) |
 | Pick the right classification for your region | [Classifications & when to use them](Classifications-and-when-to-use-them) |
 | Understand why classifications conflict and how pedotri tries to help | [Classification-challenges](Classification-challenges) |
+| Classify with SoilGrids-style Q05/Q95 uncertainty and get class probabilities | [Uncertainty-aware classification](Uncertainty-aware-classification) |
+| Aggregate a region (village / commune / farm) into a posterior — incl. SOC stock | [Regional aggregation & SOC stock](Regional-aggregation-and-SOC-stock) |
+| Classify the same sample under USDA + FAO + regional schemes at once | [Classifications & when to use them](Classifications-and-when-to-use-them#classifying-once-against-every-scheme) |
 | Convert sand/silt/clay between USDA, ISSS, KA5 | [Soil-conversions](Soil-conversions) |
 | Predict water retention, K&#x209B;, bulk density | [Pedotransfer-functions](Pedotransfer-functions) |
 | Plug lab reports (`g/kg`, organic carbon) into pedotri | [Units-and-organic-matter](Units-and-organic-matter) |

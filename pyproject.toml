@@ -1,6 +1,6 @@
 [project]
 name = "pedotri"
-version = "0.2.0"
+version = "0.3.0"
 description = "Modern, extensible soil texture classification and pedotransfer functions for Python"
 readme = "README.md"
 license = "MIT"

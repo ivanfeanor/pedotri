@@ -432,10 +432,183 @@ def _norm_cdf_array(x: np.ndarray) -> np.ndarray:
     return 0.5 * (1.0 + _erf_array(x / np.sqrt(2.0)))
 
 
+# --- Spatially-correlated sampling -------------------------------------
+#
+# The independent-pixel sampler ``sample_truncated_normal`` is enough
+# for the per-pixel classification work in :mod:`pedotri.classifier`,
+# but it under-counts uncertainty when used downstream in regional
+# aggregation: averaging independent draws across N pixels shrinks
+# σ_regional by √N, even though neighbouring SoilGrids pixels share
+# most of their predictive uncertainty.
+#
+# ``sample_correlated_field`` below draws a 2-D Gaussian random field
+# with a user-specified isotropic correlation function — by default
+# exponential ``ρ(d) = exp(−d / L)`` with ``L`` the correlation range
+# in pixels. The math, in one paragraph:
+#
+# 1. We treat the field as a stationary Gaussian process whose
+#    covariance matrix between every pair of pixels is circulant on a
+#    grid padded by 2× in each axis (Davies 1987, Wood & Chan 1994).
+#    The padding prevents the circular wrap-around aliasing that would
+#    otherwise contaminate samples when ``L`` is comparable to the
+#    domain size.
+# 2. Eigenvalues of a circulant covariance matrix are the discrete
+#    Fourier transform of its first row. Numpy gives us those for
+#    free via ``np.fft.fft2(ρ)``.
+# 3. For each sample, generate complex standard normals ``z`` of the
+#    same shape, multiply by ``√λ``, and take the real part of
+#    ``√N · IFFT(z · √λ)``. The result is a unit-variance Gaussian
+#    field whose pairwise covariance matches ``ρ`` to machine
+#    precision.
+# 4. Scale by the per-pixel σ and add the per-pixel mean.
+#
+# Variance preservation: ``E[|x_n|²] = (1/N) Σ_k λ_k · E[|z_k|²]``;
+# with ``λ`` summing to ``N · ρ(0) = N`` (since ``ρ(0) = 1``) and
+# ``E[|z_k|²] = 2`` (independent real + imaginary unit normals), this
+# gives ``E[|x_n|²] = 2``, so ``Var[Re x_n] = 1`` — i.e. the produced
+# field has unit variance at every pixel before the per-pixel σ kicks
+# in. The empirical variance + correlation is regression-tested in
+# ``tests/test_uncertainty.py::test_correlated_field_*``.
+
+
+_CORRELATION_MODELS: tuple[str, ...] = ("exponential", "gaussian", "spherical")
+
+
+def sample_correlated_field(
+    mean: FloatArray,
+    sigma: FloatArray,
+    *,
+    correlation_range: float,
+    n_samples: int,
+    rng: np.random.Generator | None = None,
+    model: str = "exponential",
+    pad_factor: int = 2,
+    chunk_size: int = 32,
+) -> FloatArray:
+    """Draw spatially-correlated Gaussian field samples on a 2-D grid.
+
+    Args:
+        mean: Per-pixel mean, shape ``(H, W)``.
+        sigma: Per-pixel standard deviation, shape ``(H, W)``. Must
+            broadcast to ``mean.shape``.
+        correlation_range: Correlation length ``L`` *in pixels* of the
+            isotropic correlation function. Callers passing a value in
+            CRS units (e.g. metres) should divide by their target
+            grid's pixel size before calling. Larger ``L`` → smoother
+            field, more uncertainty in the regional mean.
+        n_samples: Number of realisations to draw.
+        rng: Optional ``np.random.Generator`` for reproducibility.
+        model: ``"exponential"`` (default, heavy tails), ``"gaussian"``
+            (smooth), or ``"spherical"`` (compactly supported).
+            Mathematical forms documented in the module-level comment.
+        pad_factor: Multiplicative zero-padding before FFT. Default
+            ``2`` is enough to suppress circular wrap-around aliasing
+            when ``L < H/2``; values of ``3`` or ``4`` can be useful
+            for very long correlation lengths but multiply the FFT
+            cost by their square.
+        chunk_size: Number of samples drawn per inner FFT batch.
+            Caps the peak memory: an ``(H × pad_factor, W × pad_factor)``
+            complex128 array per sample, so a 100×100 grid at the
+            default chunk needs ~3 MB.
+
+    Returns:
+        ``(n_samples, H, W)`` float64 array with per-pixel mean = ``mean``
+        and per-pixel std = ``sigma``, correlated according to ``model``.
+
+    Raises:
+        InvalidInputError: For unknown ``model`` or non-matching shapes.
+    """
+    mean_arr = np.asarray(mean, dtype=np.float64)
+    sigma_arr = np.broadcast_to(np.asarray(sigma, dtype=np.float64), mean_arr.shape).astype(
+        np.float64, copy=True
+    )
+    if mean_arr.ndim != 2:
+        raise InvalidInputError(
+            f"sample_correlated_field expects a 2-D mean; got shape {mean_arr.shape}."
+        )
+    if n_samples < 1:
+        raise InvalidInputError(f"n_samples must be >= 1, got {n_samples}.")
+    if correlation_range <= 0:
+        raise InvalidInputError(
+            f"correlation_range must be positive (pixels); got {correlation_range}."
+        )
+    if pad_factor < 1:
+        raise InvalidInputError(f"pad_factor must be >= 1, got {pad_factor}.")
+    if model not in _CORRELATION_MODELS:
+        raise InvalidInputError(
+            f"Unknown correlation model {model!r}. Pick one of {list(_CORRELATION_MODELS)!r}."
+        )
+    rng = rng if rng is not None else np.random.default_rng()
+
+    h, w = mean_arr.shape
+    h_pad = h * pad_factor
+    w_pad = w * pad_factor
+
+    # Build the first row of the circulant covariance matrix in
+    # "FFT-shifted" form: distance from origin, with periodic minimum
+    # (the same trick numpy uses for fftshift).
+    iy = np.arange(h_pad)
+    ix = np.arange(w_pad)
+    dy = np.minimum(iy, h_pad - iy)
+    dx = np.minimum(ix, w_pad - ix)
+    d = np.sqrt(dy[:, None] ** 2 + dx[None, :] ** 2).astype(np.float64)
+
+    rho = _correlation_kernel(d, correlation_range, model)
+    # Eigenvalues of the circulant cov matrix. Tiny negative values
+    # arise from numerical noise — clip to zero so sqrt is real.
+    lambdas = np.fft.fft2(rho).real
+    np.maximum(lambdas, 0.0, out=lambdas)
+    sqrt_lambdas = np.sqrt(lambdas)
+    norm = float(np.sqrt(h_pad * w_pad))
+
+    out = np.empty((n_samples, h, w), dtype=np.float64)
+    for start in range(0, n_samples, chunk_size):
+        stop = min(start + chunk_size, n_samples)
+        m = stop - start
+        # Standard complex normals — Re and Im each ~ N(0, 1) — so
+        # |z_k|² has E = 2, which is exactly what the variance
+        # bookkeeping in the module-level comment relies on.
+        re = rng.standard_normal(size=(m, h_pad, w_pad))
+        im = rng.standard_normal(size=(m, h_pad, w_pad))
+        z = re + 1j * im
+        weighted = z * sqrt_lambdas[None, :, :]
+        field = norm * np.fft.ifft2(weighted, axes=(-2, -1)).real
+        out[start:stop] = field[:, :h, :w]
+
+    return mean_arr[None, :, :] + sigma_arr[None, :, :] * out
+
+
+def _correlation_kernel(distance: np.ndarray, correlation_range: float, model: str) -> np.ndarray:
+    """Evaluate the chosen isotropic correlation function.
+
+    Returns ``ρ(d)`` such that ``ρ(0) = 1``. The three supported
+    models:
+
+    - ``"exponential"``: ``ρ(d) = exp(−d / L)``. Heavy-tailed; matches
+      the Matérn ν=1/2 special case typically used as the default in
+      digital-soil-mapping kriging (Hengl et al. 2017).
+    - ``"gaussian"``: ``ρ(d) = exp(−(d / L)²)``. Smooth and
+      mean-square differentiable; closer to a Whittle ν→∞ kernel.
+    - ``"spherical"``: piecewise polynomial with compact support at
+      ``d = L``. Classic geostatistical kernel (Matheron 1963); zero
+      correlation beyond the range.
+    """
+    if model == "exponential":
+        return np.exp(-distance / correlation_range)
+    if model == "gaussian":
+        return np.exp(-((distance / correlation_range) ** 2))
+    # spherical: rho(d) = 1 - 1.5·(d/L) + 0.5·(d/L)³ for d <= L, else 0.
+    ratio = np.minimum(distance / correlation_range, 1.0)
+    rho = 1.0 - 1.5 * ratio + 0.5 * ratio**3
+    rho[distance > correlation_range] = 0.0
+    return rho
+
+
 __all__ = [
     "Quantiles",
     "parse_uncertainty",
     "sample_compositional",
+    "sample_correlated_field",
     "sample_truncated_normal",
     "shannon_entropy",
     "sigma_from_quantiles",

@@ -5,9 +5,15 @@
 - [Classification-challenges](Classification-challenges)
 - [Uncertainty-aware classification](Uncertainty-aware-classification)
 - [Regional aggregation & SOC stock](Regional-aggregation-and-SOC-stock)
+- [Reprojection & target grids](Reprojection-and-target-grids)
+- [Spatial correlation](Spatial-correlation)
+- [DEM-derived indices](DEM-derived-indices)
 - [Soil-conversions](Soil-conversions)
 - [Pedotransfer-functions](Pedotransfer-functions)
 - [Units-and-organic-matter](Units-and-organic-matter)
+
+**Compliance**
+- [ISO 14040 auditability](ISO-14040-auditability)
 
 **Use cases**
 - [Examples-gallery](Examples-gallery)

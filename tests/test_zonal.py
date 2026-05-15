@@ -415,6 +415,109 @@ def test_geometry_region_rasterizes_with_profile() -> None:
     assert agg.region_pixels == 100  # 10×10 quadrant
 
 
+def test_target_grid_reprojects_mismatched_inputs(tmp_path: Any) -> None:
+    """SoilGrids-style fine mean + coarse uncertainty band → aligned."""
+    rio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    from pedotri.grid import TargetGrid
+
+    def _write(path: Any, arr: np.ndarray, *, res: float, height: int, width: int) -> str:
+        profile = {
+            "driver": "GTiff",
+            "crs": "EPSG:4326",
+            "transform": from_origin(0.0, height * res, res, res),
+            "width": width,
+            "height": height,
+            "count": 1,
+            "dtype": str(arr.dtype),
+        }
+        with rio.open(path, "w", **profile) as dst:
+            dst.write(arr, 1)
+        return str(path)
+
+    # Mean at 1° resolution (20×20). Q05/Q95 at 2° (10×10) — like
+    # SoilGrids quantile bands published at a coarser grid than the
+    # mean. zonal_aggregate should reproject the quantile bands onto
+    # the mean's grid via TargetGrid.
+    mean_arr = np.full((20, 20), 25.0, dtype=np.float32)
+    q_arr = np.full((10, 10), 21.0, dtype=np.float32)
+    q95_arr = np.full((10, 10), 29.0, dtype=np.float32)
+    mean_p = _write(tmp_path / "soc_mean.tif", mean_arr, res=1.0, height=20, width=20)
+    q05_p = _write(tmp_path / "soc_q05.tif", q_arr, res=2.0, height=10, width=10)
+    q95_p = _write(tmp_path / "soc_q95.tif", q95_arr, res=2.0, height=10, width=10)
+
+    region = np.ones((20, 20), dtype=bool)
+    target = TargetGrid.from_bounds((0.0, 0.0, 20.0, 20.0), resolution=1.0)
+    agg = zonal_aggregate(
+        region=region,
+        properties={"soc": {"mean": mean_p, "q05": q05_p, "q95": q95_p}},
+        target_grid=target,
+        n_samples=200,
+        seed=42,
+    )
+    # 20×20 region with all pixels valid after the coarse quantile bands
+    # got upsampled to match the mean's 1° grid.
+    assert agg.n_pixels_used == 400
+    assert agg["soc"].mean == pytest.approx(25.0, abs=0.5)
+
+
+def test_target_grid_reprojects_mask(tmp_path: Any) -> None:
+    """A coarse mask file is reprojected onto the property grid."""
+    rio = pytest.importorskip("rasterio")
+    from rasterio.transform import from_origin
+
+    from pedotri.grid import TargetGrid
+
+    # Property grid at 1° (20×20). Mask at 2° (10×10) — like WorldCover
+    # at a different native resolution.
+    mean_arr = np.full((20, 20), 25.0, dtype=np.float32)
+    mask_arr = np.zeros((10, 10), dtype=np.uint8)
+    mask_arr[:, ::2] = 40  # alternate columns are "cropland"
+    mean_path = tmp_path / "soc.tif"
+    mask_path = tmp_path / "wc.tif"
+    with rio.open(
+        mean_path,
+        "w",
+        driver="GTiff",
+        crs="EPSG:4326",
+        transform=from_origin(0.0, 20.0, 1.0, 1.0),
+        width=20,
+        height=20,
+        count=1,
+        dtype="float32",
+    ) as dst:
+        dst.write(mean_arr, 1)
+    with rio.open(
+        mask_path,
+        "w",
+        driver="GTiff",
+        crs="EPSG:4326",
+        transform=from_origin(0.0, 20.0, 2.0, 2.0),
+        width=10,
+        height=10,
+        count=1,
+        dtype="uint8",
+    ) as dst:
+        dst.write(mask_arr, 1)
+
+    region = np.ones((20, 20), dtype=bool)
+    target = TargetGrid.from_bounds((0.0, 0.0, 20.0, 20.0), resolution=1.0)
+    agg = zonal_aggregate(
+        region=region,
+        properties={"soc": {"mean": str(mean_path), "sigma": np.full((20, 20), 2.0)}},
+        mask=str(mask_path),
+        mask_include=[40],
+        target_grid=target,
+        n_samples=200,
+        seed=42,
+    )
+    # Coarse mask had 50 cropland cells; reprojected to fine grid (with
+    # nearest, since the data is categorical) yields 200 cropland cells.
+    assert agg.n_pixels_used == 200
+    assert agg.mask_coverage == pytest.approx(0.5)
+
+
 def test_geometry_region_requires_profile() -> None:
     shapely = pytest.importorskip("shapely.geometry")
     shape = (10, 10)
@@ -522,3 +625,63 @@ def test_aggregate_depths_two_tuple_with_quantiles() -> None:
     )
     assert mean == pytest.approx(20.0)
     assert q.q05 == pytest.approx(15.0)
+
+
+# --- 0.4 spatial correlation ---------------------------------------------
+
+
+def test_correlation_range_inflates_regional_q_bounds() -> None:
+    """Correlated sampling must widen regional Q05/Q95 vs. independent draws."""
+    shape = (40, 40)
+    region = np.ones(shape, dtype=bool)
+
+    indep = zonal_aggregate(
+        region=region,
+        properties={"soc": _uniform_property(shape, 25.0, 6.0)},
+        n_samples=500,
+        seed=42,
+    )
+    corr = zonal_aggregate(
+        region=region,
+        properties={"soc": _uniform_property(shape, 25.0, 6.0)},
+        correlation_range=10.0,  # pixels (no profile in play)
+        n_samples=500,
+        seed=42,
+    )
+    indep_width = indep["soc"].q95 - indep["soc"].q05
+    corr_width = corr["soc"].q95 - corr["soc"].q05
+    assert corr_width > 3 * indep_width
+
+
+def test_correlation_range_zero_falls_back_to_independent() -> None:
+    shape = (15, 15)
+    region = np.ones(shape, dtype=bool)
+    indep = zonal_aggregate(
+        region=region,
+        properties={"soc": _uniform_property(shape, 25.0, 4.0)},
+        n_samples=300,
+        seed=7,
+    )
+    fake_corr = zonal_aggregate(
+        region=region,
+        properties={"soc": _uniform_property(shape, 25.0, 4.0)},
+        correlation_range=0.0,  # treated as "no correlation"
+        n_samples=300,
+        seed=7,
+    )
+    # Identical sample arrays — same code path, same seed.
+    np.testing.assert_array_equal(indep["soc"].samples, fake_corr["soc"].samples)
+
+
+def test_correlated_rejects_unknown_model() -> None:
+    shape = (10, 10)
+    region = np.ones(shape, dtype=bool)
+    with pytest.raises(InvalidInputError, match="Unknown correlation"):
+        zonal_aggregate(
+            region=region,
+            properties={"soc": _uniform_property(shape, 25.0, 4.0)},
+            correlation_range=3.0,
+            correlation_model="bogus",
+            n_samples=50,
+            seed=0,
+        )

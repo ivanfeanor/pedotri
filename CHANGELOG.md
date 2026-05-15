@@ -8,6 +8,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ### Added
 
+#### 0.4 — geospatial plumbing, spatial correlation, DEM, ISO 14040
+
+- **`pedotri.grid`** — `TargetGrid` dataclass (CRS + affine + width + height) with `from_profile` / `from_bounds` constructors. `reproject_to_grid(array, profile, target)` and `align_to_grid(sources, target=)` warp heterogeneous inputs onto a common grid via `rasterio.warp` with per-dtype resampling defaults (nearest for integers, bilinear when upsampling continuous, average when downsampling continuous). Documented affine + GDAL inverse-mapping math.
+- **`zonal_aggregate(target_grid=)`** — path-based property bands and the mask raster are auto-aligned to the target grid before the AOI is computed. ndarray inputs stay raw. Fixes the "SoilGrids 250 m + WorldCover 10 m" mismatch that 0.3 left to the user.
+- **`pedotri.uncertainty.sample_correlated_field`** — FFT-based circulant-embedding sampler (Davies 1987 / Wood & Chan 1994) for spatially-correlated Gaussian fields with three isotropic correlation kernels: exponential (default, Matérn ν=½), Gaussian, and spherical. Documented variance-preservation proof; regression tests verify empirical correlation matches `exp(−d / L)` within 0.1 absolute on 600-sample grids.
+- **`zonal_aggregate(correlation_range=, correlation_model=)`** — opt-in spatially-correlated MC for regional aggregation. Turns the documented "lower bound" on regional Q05/Q95 into a real bound by sampling whole correlated fields instead of independent pixels.
+- **`pedotri.dem`** — `slope` / `aspect` (Horn 1981), `profile_curvature` / `plan_curvature` (Zevenbergen & Thorne 1987), and `topographic_wetness_index` (Beven & Kirkby 1979). Pure numpy, with the published formulas inline in the docstrings + a wiki page covering the derivations.
+- **`pedotri.audit`** — `Provenance`, `DataSource`, `AuditTrail` for ISO 14040 / 14044 LCI auditability. Every result dataclass (`SoilGridsPoint`, `WorldCoverAOI`, `ZonalAggregate`, `AggregateDistribution`) gains an optional `.provenance` field auto-populated by its producer. `AuditTrail.to_json(path)` exports a self-contained traceability log with operation, parameters, sources, seed, software version, and the upstream chain. Replayable: same seed + same parameters → byte-identical samples (regression-tested).
+- **Four new wiki pages**: `Reprojection-and-target-grids`, `Spatial-correlation`, `DEM-derived-indices`, `ISO-14040-auditability`. Each carries the math and references (Davies 1987; Wood & Chan 1994; Horn 1981; Zevenbergen & Thorne 1987; Beven & Kirkby 1979; ISO 14040:2006 / 14044:2006).
+- **`examples/aoi_soc_stock.py`** refreshed to use `correlation_range=` and expose the audit trail in the printed summary — the SOC stock Q05/Q95 now visibly widens (from ~2 t to ~16 t on the synthetic 5 000 ha AOI) when the correlated sampler kicks in, matching the documented expectation.
+
 #### API polish pass — ergonomic refactor of the 0.3 surface
 
 After a self-review against the [mef-agroref](https://github.com/) production codebase, the 0.3 surface got one focused cleanup pass before tagging:

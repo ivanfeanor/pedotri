@@ -152,7 +152,9 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["PLR2004", "S101", "PLC0415", "RUF001", "RUF002", "RUF003", "RUF043"]
+"tests/**" = [
+    "PLR2004", "S101", "PLC0415", "RUF001", "RUF002", "RUF003", "RUF043", "N806",
+]
 # Example scripts prioritize readability over strict-lint compliance.
 # Lazy matplotlib imports, "×" for visual clarity in titles / docstrings,
 # and unstrict zip() are deliberate.
@@ -186,6 +188,13 @@ ignore = [
 "src/pedotri/ai.py" = ["PLC0415"]
 "src/pedotri/sources/soilgrids.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
 "src/pedotri/sources/worldcover.py" = ["PLC0415", "RUF001", "RUF002", "RUF003"]
+# 0.4 surface — DEM, grid, audit, dem.py uses scientific notation
+# (Greek symbols, math operators) heavily in docstrings; uncertainty
+# / zonal extended with correlated sampling have lazy scipy /
+# rasterio imports inside helpers.
+"src/pedotri/dem.py" = ["RUF001", "RUF002", "RUF003", "N803", "N806"]
+"src/pedotri/grid.py" = ["PLC0415", "RUF001", "RUF002", "RUF003", "F401"]
+"src/pedotri/audit.py" = ["PLC0415", "PLR0911", "RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 docstring-code-format = true

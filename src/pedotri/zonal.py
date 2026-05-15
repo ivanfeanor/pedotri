@@ -39,6 +39,7 @@ from typing import TYPE_CHECKING, Any
 import numpy as np
 
 from pedotri.errors import InvalidInputError
+from pedotri.grid import TargetGrid, reproject_to_grid
 from pedotri.uncertainty import Quantiles, sigma_from_quantiles
 
 if TYPE_CHECKING:
@@ -60,6 +61,7 @@ class AggregateDistribution:
     samples: np.ndarray
     n_pixels_used: int
     name: str | None = None
+    provenance: Any | None = None
 
     @property
     def mean(self) -> float:
@@ -116,6 +118,7 @@ class ZonalAggregate:
     n_pixels_used: int
     mask_coverage: float
     region_pixels: int = field(default=0)
+    provenance: Any | None = field(default=None)
 
     def __getitem__(self, key: str) -> AggregateDistribution:
         return self.properties[key]
@@ -169,10 +172,24 @@ class ZonalAggregate:
                 "combine() formula must return an array of samples, not a scalar. "
                 "Make sure the function operates element-wise on its inputs."
             )
+        derived_prov: Any | None = None
+        if self.provenance is not None:
+            from pedotri.audit import Provenance
+
+            derived_prov = Provenance(
+                operation="pedotri.zonal.ZonalAggregate.combine",
+                parameters={
+                    "fn": getattr(fn, "__name__", repr(fn)),
+                    "name": name,
+                    "consumed_properties": sorted(sample_kwargs.keys()),
+                },
+                upstream=[self.provenance],
+            )
         return AggregateDistribution(
             samples=arr,
             n_pixels_used=self.n_pixels_used,
             name=name,
+            provenance=derived_prov,
         )
 
 
@@ -183,9 +200,12 @@ def zonal_aggregate(
     mask: Any | None = None,
     mask_include: list[int] | None = None,
     profile: dict[str, Any] | None = None,
+    target_grid: TargetGrid | None = None,
     n_samples: int = 1000,
     seed: Any = None,
     confirm: bool = False,
+    correlation_range: float | None = None,
+    correlation_model: str = "exponential",
 ) -> ZonalAggregate:
     """Aggregate property rasters over an AOI with uncertainty propagation.
 
@@ -230,9 +250,36 @@ def zonal_aggregate(
         profile: Rasterio profile (must contain ``crs``, ``transform``,
             ``width``, ``height``). Required when ``region`` is a
             geometry; ignored when ``region`` is already a boolean array.
+        target_grid: Optional :class:`~pedotri.grid.TargetGrid` to
+            align every path-based input onto. When ``None``, the
+            working grid is taken from the first property's mean band
+            (or ``profile=`` if provided), matching the 0.3 behaviour.
+            When set, *path-based* property bands and the mask raster
+            are reprojected onto this grid via
+            :func:`pedotri.grid.reproject_to_grid` with per-data-type
+            resampling defaults. Pre-loaded ``ndarray`` inputs are
+            still expected to already be on the working grid.
         n_samples: Number of Monte-Carlo draws per pixel per property.
         seed: Optional int or ``np.random.Generator`` for reproducibility.
         confirm: Pass ``True`` to bypass the pre-flight cost guard.
+        correlation_range: Spatial correlation length for the per-pixel
+            uncertainty. When ``None`` (default), pixels are sampled
+            **independently** — same behaviour as 0.3, regional
+            Q05/Q95 is a documented lower bound. When ``> 0``, the
+            sampler is replaced by the FFT-based correlated-field
+            sampler in :mod:`pedotri.uncertainty`, which draws whole
+            2-D Gaussian fields with the chosen correlation function.
+            Expressed in **CRS units** when a profile / target grid
+            is in play (e.g. metres for a UTM grid, degrees for
+            EPSG:4326), or pixels when neither is. The conversion uses
+            the target grid's pixel size.
+        correlation_model: ``"exponential"`` (default — matches the
+            Matérn ν=½ assumption typical in digital-soil-mapping
+            kriging), ``"gaussian"`` (smooth fields), or
+            ``"spherical"`` (compactly supported beyond
+            ``correlation_range``). See
+            :func:`pedotri.uncertainty.sample_correlated_field` for
+            the kernel formulas and references.
 
     Returns:
         A :class:`ZonalAggregate` with one
@@ -251,13 +298,13 @@ def zonal_aggregate(
     if n_samples < 1:
         raise InvalidInputError(f"n_samples must be >= 1, got {n_samples}.")
 
-    prop_arrays, raster_profile = _load_property_stack(properties, profile)
+    prop_arrays, raster_profile = _load_property_stack(properties, profile, target_grid)
     raster_shape = next(iter(prop_arrays.values()))[0].shape
 
     region_mask = _resolve_region_mask(region, raster_shape, raster_profile)
     n_region = int(region_mask.sum())
 
-    mask_arr = _resolve_mask_raster(mask, mask_include, raster_shape)
+    mask_arr = _resolve_mask_raster(mask, mask_include, raster_shape, raster_profile)
     valid_data = np.ones(raster_shape, dtype=bool)
     for mean, sigma in prop_arrays.values():
         valid_data &= np.isfinite(mean) & np.isfinite(sigma) & (sigma >= 0)
@@ -294,22 +341,62 @@ def zonal_aggregate(
         )
 
     rng = seed if isinstance(seed, np.random.Generator) else np.random.default_rng(seed)
+    # Translate ``correlation_range`` from CRS units to pixels using the
+    # target grid's pixel size, if available. Falls back to the raw
+    # number (interpreted as pixels) when no grid info is in play.
+    range_pixels: float | None = None
+    if correlation_range is not None and correlation_range > 0:
+        range_pixels = _correlation_range_in_pixels(correlation_range, raster_profile)
     out_props: dict[str, AggregateDistribution] = {}
     for name, (mean_arr, sigma_arr) in prop_arrays.items():
-        sub_mean = mean_arr[effective]
-        sub_sigma = sigma_arr[effective]
-        regional_samples = _aggregate_property(sub_mean, sub_sigma, n_samples, rng)
+        if range_pixels is None:
+            sub_mean = mean_arr[effective]
+            sub_sigma = sigma_arr[effective]
+            regional_samples = _aggregate_property(sub_mean, sub_sigma, n_samples, rng)
+        else:
+            regional_samples = _aggregate_property_correlated(
+                mean_arr,
+                sigma_arr,
+                effective,
+                n_samples,
+                rng,
+                range_pixels=range_pixels,
+                model=correlation_model,
+            )
         out_props[name] = AggregateDistribution(
             samples=regional_samples,
             n_pixels_used=n_eff,
             name=name,
         )
 
+    aggregate_prov = _build_zonal_provenance(
+        properties_spec=properties,
+        mask=mask,
+        mask_include=mask_include,
+        n_samples=n_samples,
+        seed=seed,
+        correlation_range=correlation_range,
+        correlation_model=correlation_model,
+        n_eff=n_eff,
+        n_region=n_region,
+    )
+    # Plumb the same Provenance back into each AggregateDistribution so
+    # downstream ``combine()`` propagation stays traceable.
+    out_props = {
+        name: AggregateDistribution(
+            samples=dist.samples,
+            n_pixels_used=dist.n_pixels_used,
+            name=dist.name,
+            provenance=aggregate_prov,
+        )
+        for name, dist in out_props.items()
+    }
     return ZonalAggregate(
         properties=out_props,
         n_pixels_used=n_eff,
         mask_coverage=coverage,
         region_pixels=n_region,
+        provenance=aggregate_prov,
     )
 
 
@@ -319,6 +406,7 @@ def zonal_aggregate(
 def _load_property_stack(
     properties: dict[str, Any],
     profile: dict[str, Any] | None,
+    target_grid: TargetGrid | None = None,
 ) -> tuple[dict[str, tuple[np.ndarray, np.ndarray]], dict[str, Any] | None]:
     """Coerce each property's spec into a canonical ``(mean, sigma)`` pair.
 
@@ -336,15 +424,44 @@ def _load_property_stack(
     raster_profile = dict(profile) if profile is not None else None
     arrays: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     reference_shape: tuple[int, ...] | None = None
+    # ``effective_grid`` is the working grid every path-based input
+    # gets aligned to. When the caller passed ``target_grid=`` we use
+    # it from the start; otherwise the first path-loaded profile sets
+    # it (matching 0.3 behaviour). ndarray inputs are assumed to be
+    # already aligned.
+    effective_grid: TargetGrid | None = target_grid
+    if effective_grid is None and raster_profile is not None:
+        try:
+            effective_grid = TargetGrid.from_profile(raster_profile)
+        except InvalidInputError:
+            effective_grid = None
 
     def _to_array(name: str, kind: str, item: Any) -> np.ndarray:
-        nonlocal raster_profile, reference_shape
+        nonlocal raster_profile, reference_shape, effective_grid
         if isinstance(item, np.ndarray):
             arr = np.asarray(item, dtype=np.float64)
         elif isinstance(item, (str, Path)):
-            arr, prof = _read_raster_band(item)
-            if raster_profile is None:
-                raster_profile = dict(prof)
+            raw_arr, raw_prof = _read_raster_band(item)
+            if effective_grid is None:
+                # First path encountered sets the working grid.
+                effective_grid = TargetGrid.from_profile(raw_prof)
+                raster_profile = dict(raw_prof)
+                arr = raw_arr
+            elif effective_grid.matches(raw_prof):
+                arr = raw_arr
+                if raster_profile is None:
+                    raster_profile = dict(raw_prof)
+            else:
+                # Reproject this band onto the working grid. The
+                # default resampling kernel is picked by
+                # ``pedotri.grid._default_resampling`` based on dtype
+                # (categorical → nearest, continuous + downsample →
+                # average, otherwise → bilinear) so SoilGrids quantile
+                # bands behave like their mean.
+                arr, out_prof = reproject_to_grid(raw_arr, raw_prof, effective_grid)
+                arr = np.asarray(arr, dtype=np.float64)
+                if raster_profile is None:
+                    raster_profile = dict(out_prof)
         else:
             raise InvalidInputError(
                 f"properties[{name!r}].{kind} must be an ndarray or a GeoTIFF path; "
@@ -521,15 +638,41 @@ def _resolve_mask_raster(
     mask: Any | None,
     mask_include: list[int] | None,
     raster_shape: tuple[int, ...],
+    target_profile: dict[str, Any] | None,
 ) -> np.ndarray:
-    """Turn the user's mask input into a boolean keep-mask."""
+    """Turn the user's mask input into a boolean keep-mask.
+
+    When ``mask`` is supplied as a GeoTIFF path *and* its native grid
+    differs from the working ``target_profile``, the raster is
+    reprojected onto the property grid (with categorical / nearest
+    resampling by default — see :func:`pedotri.grid._default_resampling`).
+    ndarray masks are still expected to already be on the property
+    grid; pass them pre-aligned.
+    """
     if mask is None:
         return np.ones(raster_shape, dtype=bool)
 
     if isinstance(mask, np.ndarray):
         arr = mask
     else:
-        arr, _ = _read_raster_band(mask)
+        raw_arr, raw_prof = _read_raster_band(mask)
+        if target_profile is not None:
+            try:
+                grid = TargetGrid.from_profile(target_profile)
+            except InvalidInputError:
+                grid = None
+            if grid is not None and not grid.matches(raw_prof):
+                # Preserve the source dtype so integer class codes stay
+                # categorical — the helper will pick `nearest` from the
+                # dtype heuristic.
+                src = np.asarray(raw_arr, dtype=np.int64 if mask_include else raw_arr.dtype)
+                src_prof = dict(raw_prof)
+                src_prof["dtype"] = str(src.dtype)
+                arr, _ = reproject_to_grid(src, src_prof, grid)
+            else:
+                arr = raw_arr
+        else:
+            arr = raw_arr
 
     arr = np.asarray(arr)
     if arr.shape != raster_shape:
@@ -594,6 +737,115 @@ def _aggregate_property(
     )
     np.maximum(samples, 0.0, out=samples)
     return np.asarray(samples.mean(axis=0), dtype=np.float64)
+
+
+def _aggregate_property_correlated(
+    mean_grid: np.ndarray,
+    sigma_grid: np.ndarray,
+    effective_mask: np.ndarray,
+    n_samples: int,
+    rng: np.random.Generator,
+    *,
+    range_pixels: float,
+    model: str,
+) -> np.ndarray:
+    """Correlated regional-mean sampler — draws full 2-D fields, averages over mask.
+
+    The independent sampler in :func:`_aggregate_property` shrinks
+    σ_regional by ``√n_pixels`` (CLT) because every draw is independent
+    of its neighbours; that's the documented "lower bound on regional
+    uncertainty" caveat from 0.3. With a correlated sampler the
+    neighbours share predictive uncertainty, so the regional mean
+    inherits a much larger spread — closer to the published
+    SoilGrids-residual structure.
+
+    We use the FFT-based circulant-embedding sampler from
+    :mod:`pedotri.uncertainty` to draw whole ``(H, W)`` Gaussian fields,
+    clip at zero, then take the mean over the AOI's effective pixels.
+    """
+    from pedotri.uncertainty import sample_correlated_field
+
+    fields = sample_correlated_field(
+        mean_grid,
+        sigma_grid,
+        correlation_range=range_pixels,
+        n_samples=n_samples,
+        rng=rng,
+        model=model,
+    )
+    np.maximum(fields, 0.0, out=fields)
+    flat = fields.reshape(n_samples, -1)
+    mask_flat = effective_mask.reshape(-1)
+    return np.asarray(flat[:, mask_flat].mean(axis=1), dtype=np.float64)
+
+
+def _build_zonal_provenance(
+    *,
+    properties_spec: dict[str, Any],
+    mask: Any,
+    mask_include: list[int] | None,
+    n_samples: int,
+    seed: Any,
+    correlation_range: float | None,
+    correlation_model: str,
+    n_eff: int,
+    n_region: int,
+) -> Any:
+    """ISO 14040 provenance for one ``zonal_aggregate`` invocation."""
+    from pedotri.audit import Provenance
+
+    # Collect upstream provenance from any source-derived inputs the
+    # caller threaded into the call: an ndarray with a .provenance
+    # attribute (e.g. WorldCoverAOI.array → no, that's still a raw
+    # ndarray) — for now we just record the spec shape and the
+    # numerical parameters. Downstream callers can attach explicit
+    # upstream records via Provenance.upstream at the audit-trail level.
+    seed_int: int | None
+    try:
+        seed_int = int(seed) if seed is not None else None
+    except (TypeError, ValueError):
+        seed_int = None
+    return Provenance(
+        operation="pedotri.zonal.zonal_aggregate",
+        parameters={
+            "properties": sorted(properties_spec.keys()),
+            "mask_supplied": mask is not None,
+            "mask_include": list(mask_include) if mask_include else None,
+            "n_samples": int(n_samples),
+            "correlation_range": correlation_range,
+            "correlation_model": correlation_model if correlation_range is not None else None,
+            "n_pixels_used": int(n_eff),
+            "region_pixels": int(n_region),
+        },
+        seed=seed_int,
+    )
+
+
+def _correlation_range_in_pixels(
+    correlation_range: float, raster_profile: dict[str, Any] | None
+) -> float:
+    """Translate ``correlation_range`` (CRS units) to pixels.
+
+    When no profile is available (pure-ndarray inputs), the value is
+    taken as already-in-pixels. With a profile, we divide by the
+    target grid's mean pixel side (x and y averaged), so a 1 km
+    correlation range on a 250 m grid becomes ~4 pixels regardless of
+    which axis the user thinks in.
+    """
+    if raster_profile is None:
+        return float(correlation_range)
+    transform = raster_profile.get("transform")
+    if transform is None:
+        return float(correlation_range)
+    try:
+        px_x = abs(float(transform.a))
+        px_y = abs(float(transform.e))
+    except (AttributeError, TypeError, ValueError):
+        return float(correlation_range)
+    avg_px = (px_x + px_y) * 0.5
+    if avg_px <= 0:
+        return float(correlation_range)
+    return float(correlation_range) / avg_px
 
 
 def aggregate_depths(

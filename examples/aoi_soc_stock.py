@@ -107,6 +107,12 @@ def main() -> None:
     )
 
     # --- Regional aggregation, cropland-only ---------------------------
+    # 0.4: ``correlation_range`` switches the sampler from
+    # independent-pixel (lower-bound on regional uncertainty) to a
+    # spatially-correlated Gaussian field. ``correlation_range=4`` (in
+    # pixel-side units for this synthetic grid) gives a noticeably
+    # wider regional Q05/Q95 — the documented "truth" for SoilGrids
+    # residuals lives somewhere between the two regimes.
     agg = zonal_aggregate(
         region=region,
         properties={
@@ -115,6 +121,8 @@ def main() -> None:
         },
         mask=land_cover,
         mask_include=[WORLDCOVER_CROPLAND],
+        correlation_range=4.0,
+        correlation_model="exponential",
         n_samples=N_SAMPLES,
         seed=RNG_SEED,
     )
@@ -156,6 +164,22 @@ def main() -> None:
         f"Q05={stock.q05:8.1f}  Q95={stock.q95:8.1f}  "
         f"σ={stock.std:7.2f}"
     )
+
+    # --- 0.4: ISO 14040 audit trail ------------------------------------
+    # Every result already carries its own ``provenance`` record; the
+    # ``AuditTrail`` collector is just a flat log you'd typically save
+    # alongside the result for a reviewer.
+    from pedotri.audit import AuditTrail
+
+    trail = AuditTrail(metadata={"workflow": "examples/aoi_soc_stock.py"})
+    trail.append(agg.provenance)
+    if stock.provenance is not None:
+        trail.append(stock.provenance)
+    print()
+    print(f"Audit records:       {len(trail.records)}")
+    print(f"Pedotri version:     {agg.provenance.software['version']}")
+    print(f"Recorded seed:       {agg.provenance.seed}")
+    print(f"Correlation range:   {agg.provenance.parameters['correlation_range']}")
 
 
 if __name__ == "__main__":

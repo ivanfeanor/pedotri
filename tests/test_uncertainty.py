@@ -14,6 +14,7 @@ from pedotri.uncertainty import (
     _aggregate_class_probabilities,
     _parse_uncertainty,
     sample_compositional,
+    sample_correlated_field,
     sample_truncated_normal,
     shannon_entropy,
     sigma_from_quantiles,
@@ -439,3 +440,157 @@ def test_to_dict_omits_uncertainty_fields_for_deterministic() -> None:
     assert "entropy" not in d
     assert "confidence" not in d
     assert "unclassified_probability" not in d
+
+
+# --- spatially-correlated field ------------------------------------------
+
+
+def test_correlated_field_shape_and_unit_variance() -> None:
+    rng = np.random.default_rng(0)
+    mean = np.zeros((40, 40))
+    sigma = np.ones((40, 40))
+    samples = sample_correlated_field(mean, sigma, correlation_range=4.0, n_samples=400, rng=rng)
+    assert samples.shape == (400, 40, 40)
+    # Per-pixel variance pulls toward 1.0 across many draws (CLT).
+    assert samples.var(axis=0).mean() == pytest.approx(1.0, abs=0.1)
+    assert abs(samples.mean()) < 0.1
+
+
+def test_correlated_field_recovers_exponential_kernel() -> None:
+    """Empirical correlation at distances ≤ L should track exp(-d/L)."""
+    rng = np.random.default_rng(1)
+    H = W = 60
+    L = 6.0
+    samples = sample_correlated_field(
+        np.zeros((H, W)),
+        np.ones((H, W)),
+        correlation_range=L,
+        n_samples=600,
+        rng=rng,
+    )
+    centre = samples[:, H // 2, W // 2]
+    for d in (1, 3, 5):
+        neighbour = samples[:, H // 2, W // 2 + d]
+        corr = float(np.corrcoef(centre, neighbour)[0, 1])
+        expected = math.exp(-d / L)
+        assert abs(corr - expected) < 0.1, (
+            f"At d={d}: empirical={corr:.3f}, exp(-d/L)={expected:.3f}"
+        )
+
+
+def test_correlated_field_scales_with_per_pixel_sigma() -> None:
+    rng = np.random.default_rng(2)
+    mean = np.full((20, 20), 5.0)
+    sigma = np.full((20, 20), 3.0)
+    samples = sample_correlated_field(mean, sigma, correlation_range=2.0, n_samples=400, rng=rng)
+    # Mean field is recovered.
+    assert samples.mean(axis=0).mean() == pytest.approx(5.0, abs=0.3)
+    # Variance per pixel is sigma².
+    assert samples.var(axis=0).mean() == pytest.approx(9.0, rel=0.1)
+
+
+def test_correlated_field_gaussian_model() -> None:
+    rng = np.random.default_rng(3)
+    samples = sample_correlated_field(
+        np.zeros((30, 30)),
+        np.ones((30, 30)),
+        correlation_range=4.0,
+        n_samples=200,
+        rng=rng,
+        model="gaussian",
+    )
+    assert samples.shape == (200, 30, 30)
+    assert samples.var(axis=0).mean() == pytest.approx(1.0, abs=0.2)
+
+
+def test_correlated_field_spherical_model() -> None:
+    rng = np.random.default_rng(4)
+    L = 5.0
+    samples = sample_correlated_field(
+        np.zeros((40, 40)),
+        np.ones((40, 40)),
+        correlation_range=L,
+        n_samples=400,
+        rng=rng,
+        model="spherical",
+    )
+    # Spherical model: correlation is exactly zero beyond d=L.
+    centre = samples[:, 20, 20]
+    far = samples[:, 20, 20 + int(L * 2)]  # well beyond the range
+    corr = float(np.corrcoef(centre, far)[0, 1])
+    assert abs(corr) < 0.1
+
+
+def test_correlated_field_inflates_regional_uncertainty() -> None:
+    """The whole point: correlated draws → larger σ on the regional mean."""
+    rng_a = np.random.default_rng(10)
+    rng_b = np.random.default_rng(10)
+    H = W = 40
+    indep = sample_correlated_field(
+        np.zeros((H, W)),
+        np.ones((H, W)),
+        correlation_range=0.5,  # effectively independent (sub-pixel range)
+        n_samples=500,
+        rng=rng_a,
+    )
+    corr = sample_correlated_field(
+        np.zeros((H, W)),
+        np.ones((H, W)),
+        correlation_range=10.0,
+        n_samples=500,
+        rng=rng_b,
+    )
+    indep_regional = indep.reshape(500, -1).mean(axis=1)
+    corr_regional = corr.reshape(500, -1).mean(axis=1)
+    # Correlated draws should have regional σ at least ~3× that of the
+    # near-independent draws on the same H × W grid.
+    assert corr_regional.std() > 3 * indep_regional.std()
+
+
+def test_correlated_field_reproducibility() -> None:
+    a = sample_correlated_field(
+        np.zeros((20, 20)),
+        np.ones((20, 20)),
+        correlation_range=3.0,
+        n_samples=50,
+        rng=np.random.default_rng(99),
+    )
+    b = sample_correlated_field(
+        np.zeros((20, 20)),
+        np.ones((20, 20)),
+        correlation_range=3.0,
+        n_samples=50,
+        rng=np.random.default_rng(99),
+    )
+    np.testing.assert_array_equal(a, b)
+
+
+def test_correlated_field_rejects_unknown_model() -> None:
+    with pytest.raises(InvalidInputError, match="Unknown correlation"):
+        sample_correlated_field(
+            np.zeros((10, 10)),
+            np.ones((10, 10)),
+            correlation_range=2.0,
+            n_samples=5,
+            model="bogus",
+        )
+
+
+def test_correlated_field_rejects_non_2d_mean() -> None:
+    with pytest.raises(InvalidInputError, match="2-D"):
+        sample_correlated_field(
+            np.zeros(10),
+            np.ones(10),
+            correlation_range=2.0,
+            n_samples=5,
+        )
+
+
+def test_correlated_field_rejects_non_positive_range() -> None:
+    with pytest.raises(InvalidInputError, match="correlation_range"):
+        sample_correlated_field(
+            np.zeros((10, 10)),
+            np.ones((10, 10)),
+            correlation_range=0.0,
+            n_samples=5,
+        )

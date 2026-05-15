@@ -11,6 +11,10 @@ If you're new, start with the [README](https://github.com/ivanfeanor/pedotri/blo
 | Understand why classifications conflict and how pedotri tries to help | [Classification-challenges](Classification-challenges) |
 | Classify with SoilGrids-style Q05/Q95 uncertainty and get class probabilities | [Uncertainty-aware classification](Uncertainty-aware-classification) |
 | Aggregate a region (village / commune / farm) into a posterior — incl. SOC stock | [Regional aggregation & SOC stock](Regional-aggregation-and-SOC-stock) |
+| Align mismatched-resolution rasters (SoilGrids 250 m + WorldCover 10 m + UTM DEM) | [Reprojection & target grids](Reprojection-and-target-grids) |
+| Propagate spatially-correlated uncertainty (not the lower-bound independent-pixel mode) | [Spatial correlation](Spatial-correlation) |
+| Compute slope / aspect / curvature / TWI from a DEM | [DEM-derived indices](DEM-derived-indices) |
+| Document an LCA pipeline with ISO 14040 / 14044 traceability | [ISO 14040 auditability](ISO-14040-auditability) |
 | Classify the same sample under USDA + FAO + regional schemes at once | [Classifications & when to use them](Classifications-and-when-to-use-them#classifying-once-against-every-scheme) |
 | Convert sand/silt/clay between USDA, ISSS, KA5 | [Soil-conversions](Soil-conversions) |
 | Predict water retention, K&#x209B;, bulk density | [Pedotransfer-functions](Pedotransfer-functions) |

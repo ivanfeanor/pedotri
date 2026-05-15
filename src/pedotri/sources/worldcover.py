@@ -98,6 +98,7 @@ class WorldCoverAOI:
     bbox: tuple[float, float, float, float]
     year: int
     cached: bool
+    provenance: Any | None = None
 
     def class_fraction(self, class_codes: int | list[int]) -> float:
         """Fraction of pixels matching the given class codes."""
@@ -168,11 +169,47 @@ def fetch_aoi(
     cached_result = _load_cached_tif(cache_path, cache_ttl_days)
     if cached_result is not None:
         array, profile = cached_result
-        return WorldCoverAOI(array=array, profile=profile, bbox=bbox, year=year, cached=True)
+        prov = _build_provenance(bbox, year, cached=True)
+        return WorldCoverAOI(
+            array=array,
+            profile=profile,
+            bbox=bbox,
+            year=year,
+            cached=True,
+            provenance=prov,
+        )
 
     array, profile = _fetch_and_mosaic(bbox, year, width, height)
     _save_cached_tif(cache_path, array, profile)
-    return WorldCoverAOI(array=array, profile=profile, bbox=bbox, year=year, cached=False)
+    prov = _build_provenance(bbox, year, cached=False)
+    return WorldCoverAOI(
+        array=array,
+        profile=profile,
+        bbox=bbox,
+        year=year,
+        cached=False,
+        provenance=prov,
+    )
+
+
+def _build_provenance(bbox: tuple[float, float, float, float], year: int, *, cached: bool) -> Any:
+    """ISO 14040 provenance record for a WorldCover AOI fetch."""
+    from pedotri.audit import Provenance, _utc_iso_now, make_source
+
+    version_id, _ = _VERSION_INFO[year]
+    source = make_source(
+        name="ESA WorldCover",
+        version=version_id,
+        url=f"{_BUCKET_BASE}/{_VERSION_INFO[year][1]}/",
+        accessed_utc=_utc_iso_now(),
+        cached=cached,
+        bbox=list(bbox),
+    )
+    return Provenance(
+        operation="pedotri.sources.worldcover.fetch_aoi",
+        parameters={"bbox": list(bbox), "year": year},
+        sources=[source],
+    )
 
 
 def fetch_aoi_from_polygon(geom: Any, *, year: int = 2021, **kwargs: Any) -> WorldCoverAOI:

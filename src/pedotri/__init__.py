@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import contextlib as _contextlib
 
-from pedotri import sources, uncertainty, zonal
+from pedotri import audit, dem, grid, raster, sources, uncertainty, zonal
 from pedotri.classifier import ClassifyResult, classify, classify_all
 from pedotri.errors import (
     ClassificationError,
@@ -70,11 +70,15 @@ __all__ = [
     "TextureDiagram",
     "UnknownClassificationError",
     "__version__",
+    "audit",
     "classify",
     "classify_all",
+    "dem",
     "get_classification",
+    "grid",
     "list_classifications",
     "load_classification",
+    "raster",
     "register_classification",
     "render_svg",
     "sources",

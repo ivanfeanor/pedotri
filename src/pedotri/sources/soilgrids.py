@@ -107,6 +107,7 @@ class SoilGridsPoint:
     values: dict[str, dict[str, dict[str, float]]]
     raw: dict[str, Any]
     cached: bool
+    provenance: Any | None = None
 
     def value(self, property: str, depth: str = "0-5cm", value: str = "mean") -> float:
         """Return a single value with a clear error if any leg is missing.
@@ -266,7 +267,61 @@ def fetch_point(
         _save_cached(cache_path, raw)
 
     converted = _parse_response(raw, props, depths_t, values_t)
-    return SoilGridsPoint(lon=lon, lat=lat, values=converted, raw=raw, cached=cached)
+    prov = _build_provenance(
+        lon, lat, props, depths_t, values_t, cached=cached, url=_request_url(payload)
+    )
+    return SoilGridsPoint(
+        lon=lon,
+        lat=lat,
+        values=converted,
+        raw=raw,
+        cached=cached,
+        provenance=prov,
+    )
+
+
+def _build_provenance(
+    lon: float,
+    lat: float,
+    properties: tuple[str, ...],
+    depths: tuple[str, ...],
+    values: tuple[str, ...],
+    *,
+    cached: bool,
+    url: str,
+) -> Any:
+    """Construct an ISO 14040-style :class:`~pedotri.audit.Provenance` record."""
+    from pedotri.audit import Provenance, _utc_iso_now, make_source
+
+    source = make_source(
+        name="ISRIC SoilGrids 2.0",
+        version="v2.0",
+        url=url,
+        accessed_utc=_utc_iso_now(),
+        cached=cached,
+    )
+    return Provenance(
+        operation="pedotri.sources.soilgrids.fetch_point",
+        parameters={
+            "lon": float(lon),
+            "lat": float(lat),
+            "properties": list(properties),
+            "depths": list(depths),
+            "values": list(values),
+        },
+        sources=[source],
+    )
+
+
+def _request_url(payload: dict[str, Any]) -> str:
+    query: list[tuple[str, str]] = [
+        ("lon", str(payload["lon"])),
+        ("lat", str(payload["lat"])),
+    ]
+    query.extend(("property", p) for p in payload["property"])
+    query.extend(("depth", d) for d in payload["depth"])
+    query.extend(("value", v) for v in payload["value"])
+    return f"{payload['url']}?{urllib.parse.urlencode(query)}"
 
 
 def clear_cache(*, cache_dir: Path | str | None = None) -> int:

@@ -16,7 +16,7 @@ HYPRES convention.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -65,6 +65,17 @@ class WostenResult:
     n: float
     saturated_conductivity: float
     l: float  # noqa: E741 — single-letter Mualem parameter name
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dict representation."""
+        return {
+            "theta_r": self.theta_r,
+            "theta_s": self.theta_s,
+            "alpha": self.alpha,
+            "n": self.n,
+            "saturated_conductivity": self.saturated_conductivity,
+            "l": self.l,
+        }
 
 
 @overload

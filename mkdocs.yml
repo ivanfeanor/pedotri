@@ -1,8 +1,8 @@
 site_name: pedotri
 site_description: Modern soil texture classification and pedotransfer functions for Python
-site_url: https://ikolomiets.github.io/pedotri/
-repo_url: https://github.com/ikolomiets/pedotri
-repo_name: ikolomiets/pedotri
+site_url: https://ivanfeanor.github.io/pedotri/
+repo_url: https://github.com/ivanfeanor/pedotri
+repo_name: ivanfeanor/pedotri
 edit_uri: edit/main/docs/
 copyright: Copyright &copy; 2026 Ivan Kolomiets
 

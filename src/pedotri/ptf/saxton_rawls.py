@@ -17,7 +17,7 @@ the formulas use fractions internally.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, overload
+from typing import TYPE_CHECKING, Any, overload
 
 import numpy as np
 
@@ -57,6 +57,18 @@ class SaxtonRawlsResult:
     saturated_conductivity: float
     bulk_density: float
     air_entry_tension: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dict representation."""
+        return {
+            "wilting_point": self.wilting_point,
+            "field_capacity": self.field_capacity,
+            "saturation": self.saturation,
+            "available_water": self.available_water,
+            "saturated_conductivity": self.saturated_conductivity,
+            "bulk_density": self.bulk_density,
+            "air_entry_tension": self.air_entry_tension,
+        }
 
 
 @overload

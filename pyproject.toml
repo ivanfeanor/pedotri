@@ -7,7 +7,7 @@ license = "MIT"
 license-files = ["LICENSE"]
 requires-python = ">=3.11"
 authors = [
-    { name = "Ivan Kolomiets", email = "ikolomiets@myeasyfarm.com" },
+    { name = "Ivan Kolomiets", email = "ieee802@yandex.ru" },
 ]
 keywords = [
     "soil",
@@ -48,21 +48,24 @@ matplotlib = ["matplotlib>=3.7"]
 plotly = ["plotly>=5.18"]
 pandas = ["pandas>=2.0"]
 polars = ["polars>=0.20"]
+mcp = ["mcp>=1.0"]
 all = [
     "matplotlib>=3.7",
     "plotly>=5.18",
     "pandas>=2.0",
     "polars>=0.20",
+    "mcp>=1.0",
 ]
 
 [project.scripts]
 pedotri = "pedotri.cli:main"
+pedotri-mcp = "pedotri.mcp_server:main"
 
 [project.urls]
-Homepage = "https://github.com/ikolomiets/pedotri"
-Repository = "https://github.com/ikolomiets/pedotri"
-Issues = "https://github.com/ikolomiets/pedotri/issues"
-Documentation = "https://ikolomiets.github.io/pedotri/"
+Homepage = "https://github.com/ivanfeanor/pedotri"
+Repository = "https://github.com/ivanfeanor/pedotri"
+Issues = "https://github.com/ivanfeanor/pedotri/issues"
+Documentation = "https://ivanfeanor.github.io/pedotri/"
 
 [build-system]
 requires = ["uv_build>=0.11.14,<0.12.0"]
@@ -72,6 +75,7 @@ build-backend = "uv_build"
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
+    "pytest-asyncio>=0.23",
     "hypothesis>=6.100",
     "ruff>=0.6",
     "mypy>=1.10",
@@ -79,6 +83,7 @@ dev = [
     "plotly>=5.18",
     "pandas>=2.0",
     "polars>=0.20",
+    "mcp>=1.0",
 ]
 docs = [
     "mkdocs>=1.6",
@@ -127,6 +132,9 @@ ignore = [
 "src/pedotri/plot/__init__.py" = ["PLC0415"]
 "src/pedotri/plot/mpl.py" = ["PLC0415"]
 "src/pedotri/plot/plotly_backend.py" = ["PLC0415"]
+# MCP SDK is an optional extra; mcp_server lazy-imports it inside the
+# builder function so `import pedotri` always works without the SDK.
+"src/pedotri/mcp_server.py" = ["PLC0415"]
 
 [tool.ruff.format]
 docstring-code-format = true

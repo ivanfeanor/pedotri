@@ -13,6 +13,7 @@ Kachinsky's physical-clay grouping.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, overload
 
@@ -50,6 +51,20 @@ class ClassifyResult:
     group: str | None
     parent: str | None
     distance: float
+
+    def to_dict(self) -> dict[str, Any]:
+        """Return a JSON-serializable dict representation.
+
+        ``nan`` is mapped to ``None`` so the result encodes cleanly with
+        the standard library ``json`` module.
+        """
+        return {
+            "key": self.key,
+            "name": self.name,
+            "group": self.group,
+            "parent": self.parent,
+            "distance": None if math.isnan(self.distance) else self.distance,
+        }
 
 
 @overload

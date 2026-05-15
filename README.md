@@ -2,7 +2,7 @@
 
 [![PyPI](https://img.shields.io/pypi/v/pedotri.svg)](https://pypi.org/project/pedotri/)
 [![Python](https://img.shields.io/pypi/pyversions/pedotri.svg)](https://pypi.org/project/pedotri/)
-[![License](https://img.shields.io/pypi/l/pedotri.svg)](https://github.com/ikolomiets/pedotri/blob/main/LICENSE)
+[![License](https://img.shields.io/pypi/l/pedotri.svg)](https://github.com/ivanfeanor/pedotri/blob/main/LICENSE)
 
 Modern, extensible soil texture classification and pedotransfer functions for Python.
 
@@ -20,6 +20,7 @@ pip install "pedotri[matplotlib]"   # static plots
 pip install "pedotri[plotly]"       # interactive plots
 pip install "pedotri[pandas]"       # DataFrame accessor
 pip install "pedotri[polars]"       # Polars accessor
+pip install "pedotri[mcp]"          # MCP server for Claude Desktop / Cursor
 pip install "pedotri[all]"          # everything
 ```
 
@@ -93,7 +94,7 @@ pedotri.register_classification("path/to/my_classification.toml")
 pedotri.classify(40, 30, classification="MY_CLASSIFICATION")
 ```
 
-See [docs/custom-classifications](https://ikolomiets.github.io/pedotri/custom/) for the schema.
+See [docs/custom-classifications](https://ivanfeanor.github.io/pedotri/custom/) for the schema.
 
 ## Texture diagrams
 
@@ -170,6 +171,54 @@ pedotri classify -c KACHINSKY --physical-clay 35           # 1-D
 pedotri classify --csv samples.csv --output out.csv -c USDA # batch
 pedotri render -c USDA --title "USDA" -o usda.svg          # write an SVG
 ```
+
+## Use as an LLM tool
+
+pedotri ships ready-made JSON tool schemas and an MCP server so models can call it directly.
+
+### Anthropic API / OpenAI tool use
+
+```python
+import pedotri.ai
+from anthropic import Anthropic
+
+client = Anthropic()
+response = client.messages.create(
+    model="claude-sonnet-4-5",
+    max_tokens=1024,
+    tools=pedotri.ai.tool_schemas(),
+    messages=[{"role": "user", "content": "What's the texture of a 60/20/20 sand/clay/silt sample under USDA?"}],
+)
+# When the model returns tool_use blocks, dispatch them:
+for block in response.content:
+    if block.type == "tool_use":
+        result = pedotri.ai.run(block.name, block.input)
+        # → {"key": "sandy_clay_loam", "name": "sandy clay loam", "group": "moderately_fine", ...}
+```
+
+Eight tools are exposed: `classify_soil`, `classify_soil_1d`, `list_classifications`, `classification_info`, `saxton_rawls`, `wosten`, `convert_particle_size`, `render_diagram`. Errors come back as structured envelopes (not raised) so the model can self-correct in a tool-use loop.
+
+### Claude Desktop (MCP)
+
+Install with the MCP extra and add to your Claude Desktop config:
+
+```bash
+pip install "pedotri[mcp]"
+```
+
+On macOS, edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "pedotri": {
+      "command": "pedotri-mcp"
+    }
+  }
+}
+```
+
+Claude will then see all eight pedotri tools in every conversation and can call them while reasoning about soil samples.
 
 ## Pedotransfer functions
 

@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.1.2] — 2026-05-15
+
+### Fixed
+
+- `pedotri.__version__` now reads from package metadata via `importlib.metadata` instead of a hardcoded string, so it always matches the installed wheel version. The 0.1.1 release shipped with `__version__ == "0.1.0"` because the constant wasn't bumped alongside `pyproject.toml`; making the version a single source of truth prevents that class of drift.
+
 ## [0.1.1] — 2026-05-15
 
 ### Changed
@@ -90,6 +96,7 @@ Fourteen classifications shipped, with class names in en / fr / de / es / ru / p
 - mkdocs site: quickstart, built-in / custom-classification / i18n guides, PTFs, plotting, CLI, AI tools, units, and full API reference.
 - Polygon provenance notes (Tier 1 direct-from-literature vs. Tier 2 textbook-derived).
 
-[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/ivanfeanor/pedotri/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.2
 [0.1.1]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.1
 [0.1.0]: https://github.com/ivanfeanor/pedotri/releases/tag/v0.1.0

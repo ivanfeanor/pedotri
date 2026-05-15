@@ -19,6 +19,8 @@ Quick reference::
 
 from __future__ import annotations
 
+import contextlib as _contextlib
+
 from pedotri.classifier import ClassifyResult, classify
 from pedotri.errors import (
     ClassificationError,
@@ -36,14 +38,19 @@ from pedotri.registry import (
 )
 from pedotri.schema import Classification, TextureClass
 
-__version__ = "0.1.0"
+try:
+    from importlib.metadata import PackageNotFoundError
+    from importlib.metadata import version as _pkg_version
+
+    __version__ = _pkg_version("pedotri")
+except PackageNotFoundError:  # pragma: no cover - editable install without metadata
+    __version__ = "0.0.0+unknown"
+del _pkg_version, PackageNotFoundError
 
 
 # Optional DataFrame accessors are registered as a side effect of
 # importing pedotri whenever pandas / polars are available, so users
 # can write ``df.soil.classify(...)`` without an explicit import.
-import contextlib as _contextlib
-
 with _contextlib.suppress(ImportError):
     from pedotri import _pandas_accessor  # noqa: F401
 

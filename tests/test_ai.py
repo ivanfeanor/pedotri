@@ -19,6 +19,7 @@ def test_tool_schemas_complete() -> None:
     assert names == {
         "classify_soil",
         "classify_soil_1d",
+        "classify_point",
         "list_classifications",
         "classification_info",
         "saxton_rawls",
@@ -222,6 +223,144 @@ def test_wrong_argument_type_returns_envelope() -> None:
     )
     assert result["error"] == "TypeError"
     assert "sand" in result["message"]
+
+
+def test_classify_point_explicit_no_uncertainty() -> None:
+    """No quantiles → behaves like classify_soil; uncertainty fields stay absent."""
+    result = ai.run(
+        "classify_point",
+        {"sand": 13, "clay": 50, "classification": "USDA"},
+    )
+    assert result["key"] == "clay"
+    assert "confidence" not in result
+    assert "probabilities" not in result
+
+
+def test_classify_point_explicit_with_uncertainty_distance() -> None:
+    result = ai.run(
+        "classify_point",
+        {
+            "sand": 27,
+            "clay": 38,
+            "sand_q05": 22,
+            "sand_q95": 32,
+            "clay_q05": 33,
+            "clay_q95": 43,
+            "classification": "USDA",
+            "method": "distance",
+        },
+    )
+    assert "confidence" in result
+    assert 0.0 <= result["confidence"] <= 1.0
+
+
+def test_classify_point_explicit_with_uncertainty_monte_carlo() -> None:
+    result = ai.run(
+        "classify_point",
+        {
+            "sand": 27,
+            "clay": 38,
+            "sand_q05": 22,
+            "sand_q95": 32,
+            "clay_q05": 33,
+            "clay_q95": 43,
+            "classification": "USDA",
+            "method": "monte_carlo",
+            "n_samples": 500,
+            "seed": 42,
+        },
+    )
+    probs = result["probabilities"]
+    assert isinstance(probs, dict)
+    assert probs
+    total = sum(probs.values()) + result.get("unclassified_probability", 0.0)
+    assert abs(total - 1.0) < 1e-6
+
+
+def test_classify_point_requires_one_mode() -> None:
+    assert ai.run("classify_point", {})["error"] == "InvalidInputError"
+
+
+def test_classify_point_rejects_mixed_modes() -> None:
+    err = ai.run(
+        "classify_point",
+        {"sand": 13, "clay": 50, "lon": 2.5, "lat": 47.0},
+    )
+    assert err["error"] == "InvalidInputError"
+    assert "(sand, clay) or (lon, lat)" in err["message"]
+
+
+def test_classify_point_rejects_partial_quantiles() -> None:
+    err = ai.run(
+        "classify_point",
+        {"sand": 27, "clay": 38, "sand_q05": 22, "classification": "USDA"},
+    )
+    assert err["error"] == "InvalidInputError"
+    assert "sand_q05" in err["message"]
+
+
+def test_classify_point_from_soilgrids_with_mock(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+    """Stub SoilGrids HTTP and verify the lon/lat mode pipes through to classify()."""
+
+    from pedotri.sources import soilgrids
+
+    canned = {
+        "properties": {
+            "layers": [
+                {
+                    "name": "sand",
+                    "depths": [
+                        {
+                            "label": "0-5cm",
+                            "values": {"mean": 350, "Q0.05": 280, "Q0.95": 420},
+                        }
+                    ],
+                },
+                {
+                    "name": "clay",
+                    "depths": [
+                        {
+                            "label": "0-5cm",
+                            "values": {"mean": 270, "Q0.05": 220, "Q0.95": 320},
+                        }
+                    ],
+                },
+            ]
+        }
+    }
+
+    class _Resp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            pass
+
+        def read(self):
+            return json.dumps(canned).encode("utf-8")
+
+    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", lambda req, timeout=30.0: _Resp())
+    # Redirect cache into tmp_path so a real cache dir isn't polluted.
+    monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
+
+    result = ai.run(
+        "classify_point",
+        {
+            "lon": 2.5,
+            "lat": 47.0,
+            "classification": "USDA",
+            "method": "monte_carlo",
+            "n_samples": 500,
+            "seed": 42,
+        },
+    )
+    assert result["key"] is not None
+    assert "probabilities" in result
+    assert result["source"]["name"] == "soilgrids"
+    assert result["source"]["cached"] is False
+    assert result["source"]["values"]["sand"]["mean"] == pytest.approx(35.0)
 
 
 def test_result_dataclasses_have_to_dict() -> None:

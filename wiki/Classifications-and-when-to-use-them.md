@@ -59,6 +59,26 @@ Got geographic data with a specific country/region?
         └── Detailed (12 classes) → USDA
 ```
 
+## Classifying once against every scheme
+
+Side-by-side multi-scheme reports — typical in agronomic web apps that
+want to surface USDA + FAO + the regional French / German label all at
+once — are a one-liner:
+
+```python
+import pedotri
+
+results = pedotri.classify_all(sand=27, clay=45, locale="fr")
+{k: r.name for k, r in results.items()}
+# {'USDA': 'argile', 'FAO': 'fine', 'GEPPA': 'argile lourde',
+#  'KA5': 'Tl', 'ISSS': '...', ...}
+```
+
+`classify_all` calls `classify(..., detailed=True)` once per 2-axis
+classification (1-axis schemes like KACHINSKY are skipped — they take a
+different input). Pass `schemes=["USDA", "FAO"]` to restrict the set,
+or `locale="fr"` (etc.) for localised class names in one go.
+
 ## Related
 
 - [Soil-conversions](Soil-conversions) — moving (sand, silt, clay) between standards with different cutoffs

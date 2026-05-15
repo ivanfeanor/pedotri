@@ -6,6 +6,63 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+### Added
+
+#### API polish pass — ergonomic refactor of the 0.3 surface
+
+After a self-review against the [mef-agroref](https://github.com/) production codebase, the 0.3 surface got one focused cleanup pass before tagging:
+
+- **`Quantiles(q05, q95)` dataclass** in `pedotri.uncertainty` — the new self-documenting form for `*_uncertainty` kwargs. The bare 2-tuple `(q05, q95)` shorthand still works but emits a `DeprecationWarning` recommending `Quantiles(...)`; tuples of two numbers were genuinely ambiguous (could be read as `(low, high)` of an error bar, `(−err, +err)`, …) and silently produced wrong σ.
+- **One uncertainty kwarg per axis everywhere.** `classify_array_with_uncertainty` and `classify_geotiff_with_uncertainty` no longer expose `sand_q05` / `sand_q95` / `sand_sigma` (six kwargs for two axes); they now take `sand_uncertainty=` / `clay_uncertainty=` accepting `Quantiles`, scalar/array σ, or — for the GeoTIFF helper — a `(q05_path, q95_path)` 2-tuple of file paths. Matches the point API.
+- **`zonal_aggregate(properties=...)` accepts richer spec shapes.** A property's value can now be a dict (`{"mean": …, "uncertainty": Quantiles(q05, q95)}` or `{"mean": …, "sigma": …}` or the legacy `{"mean": …, "q05": …, "q95": …}`) or a 2-tuple `(mean, uncertainty)`. The original 3-tuple `(mean, q05, q95)` keeps working but emits a `DeprecationWarning`.
+- **Auto-promote `detailed=True` on uncertainty.** Calling `pedotri.classify(..., sand_uncertainty=Quantiles(...))` now returns a `ClassifyResult` automatically — no more "Uncertainty kwargs require detailed=True" error. The boilerplate the old check enforced added nothing.
+- **`ZonalAggregate.combine(fn)` inspects fn's signature.** Lambdas only need to declare the property names they actually consume; extras are silently dropped. Functions using `**kwargs` still receive every property.
+- **`RasterClassification` helper API.** Added `has_confidence`, `has_probabilities`, `n_classes` properties, a `modal_confidence()` method that picks the right field for the active method, and `class_probability(class_key)` that walks the top-k stack so you can answer "per-pixel probability that this is *clay*" in one call.
+- **`SoilGridsPoint` typed accessors.** `pt.value(property, depth, value)` raises a self-describing `PedotriError` pinpointing which level wasn't fetched. `pt.depths_for(property)`, `pt.properties()`, and `pt.as_quantiles(property, depth)` (returns a `Quantiles` ready to feed `pedotri.classify`) cover the common navigation patterns without dropping into the raw triple-nested dict.
+- **Private helpers prefixed.** `_parse_uncertainty`, `_aggregate_class_probabilities`, `_distance_confidence`, `_effective_sigma` are no longer exposed; the public `pedotri.uncertainty` surface is now `Quantiles` + `sigma_from_quantiles` + `sample_truncated_normal` + `sample_compositional` + `shannon_entropy`. (`parse_uncertainty` remains importable as a back-compat alias.)
+- **`pedotri.classify_all(sand, clay, *, locale=, schemes=, units=)`** — classify the same point under every 2-axis built-in (USDA + FAO + GEPPA + KA5 + …) in one call, returning `dict[scheme_key, ClassifyResult]`. Mirrors the agroref pattern of side-by-side multi-scheme reports.
+- **`pedotri.zonal.aggregate_depths(samples, weights)`** — depth-weighted aggregation of per-depth mean + Q0.05 + Q0.95 bands into a single 0–30 cm layer (the standard `5 : 10 : 15` interval-width recipe), propagating the uncertainty envelope. Replaces the hand-rolled numpy code most multi-depth SoilGrids ingest pipelines carry around.
+- **`examples/aoi_soc_stock.py`** — end-to-end SOC-stock-on-cropland workflow chaining `aggregate_depths` → `zonal_aggregate` → `combine` on synthetic inputs (offline). Runs in under a second; swap the `build_synthetic_*` helpers for real loaders to switch to production data.
+- **`pedotri.Quantiles`** — re-export at the package root. Less reach-around for callers who write `from pedotri import Quantiles`.
+
+### Performance
+
+- **Vectorized `erf`** via the Abramowitz & Stegun 7.1.26 approximation in pure numpy. Replaces `np.vectorize(math.erf)` everywhere it appeared (distance-method confidence). Measured ~4.7× speedup on 1 Mpix workloads — pure-numpy, no new dependency. See the "Numerical implementation notes" section of [Uncertainty-aware classification](https://github.com/ivanfeanor/pedotri/wiki/Uncertainty-aware-classification) for the rationale.
+- **Vectorized `_aggregate_class_probabilities`** via a single global `np.bincount` over flattened `row × n_classes + code` indices. Replaces the per-row Python loop. Measured 2–4× speedup at typical raster MC sizes.
+
+#### Uncertainty-aware classification (`pedotri.uncertainty`)
+
+- **Distribution helpers (`pedotri.uncertainty`)** — `sigma_from_quantiles`, `parse_uncertainty`, `sample_truncated_normal`, `sample_compositional`, `aggregate_class_probabilities`, `shannon_entropy`. SoilGrids and similar maps publish Q0.05 / Q0.50 / Q0.95 layers; these helpers turn that quantile data into distribution parameters and draw composition samples that respect `sand + silt + clay = 100`.
+- **`<axis>_uncertainty` kwargs on `pedotri.classify`** — pass either a `(Q0.05, Q0.95)` tuple or a σ scalar / array per axis (`sand_uncertainty=`, `clay_uncertainty=`, `physical_clay_uncertainty=`, …). Requires `detailed=True` so the result carries probabilities and confidence.
+- **`method=` keyword on `pedotri.classify`** — `"distance"` (default, cheap) computes `Φ(distance / σ_effective)` and returns a single confidence score for the modal class; `"monte_carlo"` draws `n_samples` realizations, classifies each, and returns a full probability distribution plus Shannon entropy.
+- **Extended `ClassifyResult`** — new optional fields `probabilities`, `entropy`, `confidence`, `unclassified_probability`. The deterministic path leaves all four as `None` so existing code is unaffected; `to_dict()` only emits these fields when populated.
+
+#### Uncertainty-aware raster classification (`pedotri.raster`)
+
+- **`pedotri.raster.classify_array_with_uncertainty(sand_mean, clay_mean, *, sand_q05=, sand_q95=, sand_sigma=, …, classification=, method=, n_samples=, seed=, top_k=, chunk_pixels=, confirm=)`** — pixel-wise uncertainty propagation. Accepts either `(Q05, Q95)` rasters or a direct σ raster per axis (mixing forms across axes is allowed). Returns a `RasterClassification` dataclass with modal codes + keys plus method-specific outputs: `confidence` for `"distance"`, or `top_k_codes` / `top_k_probs` / `entropy` / `unclassified_probability` for `"monte_carlo"`. The MC path chunks the raster (default 50 000 valid pixels per chunk) to cap peak memory, and a pre-flight guard warns above 1e8 pixel-samples of work and aborts above 1e9 unless `confirm=True`.
+- **`pedotri.raster.classify_geotiff_with_uncertainty(...)`** — convenience wrapper reading SoilGrids-style mean + quantile (or σ) GeoTIFFs from disk, validating alignment, and forwarding to the array path. Returns the same `RasterClassification` with a populated `profile` aligned with the mean raster.
+- **`pedotri.raster.write_confidence_geotiff(path, confidence, *, profile, method=)`** — single-band float32 confidence raster, NaN for unclassified / zero-σ pixels, tagged with the producing method.
+- **`pedotri.raster.write_probability_stack_geotiff(path, top_k_codes, top_k_probs, *, profile, keys)`** — 10-band uint8 GeoTIFF (5 class-code bands + 5 probability bands scaled to 0–255). Band descriptions identify `rank_k_class` / `rank_k_prob_x255`; dataset tags record the class-key mapping and the active `top_k`.
+- **`examples/uncertainty_demo.py`** — reproducible synthetic-raster demo that emits modal-class, distance-confidence, MC-entropy PNGs/TIFFs plus the 10-band probability stack to `docs/images/`.
+
+#### Regional aggregation (`pedotri.zonal`)
+
+- **`pedotri.zonal.zonal_aggregate(*, region=, properties=, mask=, mask_include=, profile=, n_samples=, seed=, confirm=)`** — Monte-Carlo aggregation of property rasters over an AOI. ``region`` accepts a boolean ndarray, a shapely geometry, or any ``__geo_interface__`` object. ``properties`` is a mapping of ``name -> (mean, q05, q95)`` triples (ndarrays or paths). Optional ``mask`` + ``mask_include`` restrict the aggregation to a land-cover class allowlist (works with ESA WorldCover out of the box). Returns a :class:`pedotri.zonal.ZonalAggregate` with one :class:`AggregateDistribution` per property and a regional ``mask_coverage`` summary. Independent-pixel sampling in 0.3.x — the reported regional Q05/Q95 is a documented lower bound on the true posterior width.
+- **`AggregateDistribution`** — posterior over a single regional aggregate. Exposes ``mean``, ``std``, ``q05``, ``q50``, ``q95``, ``quantile(q)``, plus the raw ``samples`` array.
+- **`ZonalAggregate.combine(fn, *, name=)`** — propagate per-property samples through an arbitrary user formula (typical case: ``stock = soc · bd · depth · area``). Defaults on the lambda let you bake in scalar constants without leaking them through the aggregation API.
+
+#### Data sources (`pedotri.sources`)
+
+- **`pedotri.sources.soilgrids.fetch_point(lon, lat, *, properties=, depths=, values=, cache_dir=, cache_ttl_days=, timeout=)`** — query SoilGrids 2.0 for one coordinate (default sand + clay at 0–5 cm with mean + Q0.05 + Q0.95). Responses are persisted under `$XDG_CACHE_HOME/pedotri/soilgrids/` (override via `cache_dir=`), keyed by a sha-256 of the canonical request payload, with a 30-day TTL by default. Units are translated back into pedotri-native percent / g/cm³ on the way out.
+- **`SoilGridsPoint`** dataclass with `.values`, `.cached`, and a `sand_clay(depth="0-5cm")` convenience returning `(mean, Q05, Q95)` for both axes ready to feed `pedotri.classify(..., sand_uncertainty=, clay_uncertainty=)`.
+- **`pedotri.sources.soilgrids.clear_cache()`** — invalidate the local snapshot in one call (returns the number of files removed).
+- **`pedotri.sources.worldcover.fetch_aoi(bbox, *, year=2021, cache_dir=, cache_ttl_days=365, max_pixels=)`** — fetch ESA WorldCover 10 m land cover for a bounding box. Computes intersecting 3°×3° tiles, opens each remote Cloud-Optimized GeoTIFF via GDAL `/vsicurl/`, reads only the AOI window, and mosaics across tile boundaries — a 1 km² village pulls a few hundred KB instead of a multi-gigabyte tile. Cached on disk by `(bbox, year)` digest with a 365-day TTL. AOI size capped at 25 Mpix by default. Class-code constants (`CROPLAND = 40`, `TREE_COVER = 10`, `BUILT_UP = 50`, …) and a `WorldCoverAOI.class_fraction(codes)` helper for quick summaries.
+- **`pedotri.sources.worldcover.fetch_aoi_from_polygon(geom, *, year=, …)`** — convenience that derives the bbox from any shapely / `__geo_interface__` geometry before delegating to `fetch_aoi`. The returned raster plugs directly into `pedotri.zonal.zonal_aggregate(..., mask=aoi.array, mask_include=[CROPLAND])`.
+
+#### MCP tool: `classify_point`
+
+- Single new MCP tool that subsumes both the explicit `classify_soil` flow and the SoilGrids fetch path. Modes are disambiguated by the inputs: explicit `sand`/`clay` (with optional `*_q05`/`*_q95`) or coordinates `lon`/`lat` (auto-fetches SoilGrids + uses its uncertainty). Returns the same `ClassifyResult` shape with probabilities + confidence when uncertainty is available, plus a `source` block describing where the values came from.
+
 ## [0.2.0] — 2026-05-15
 
 ### Added

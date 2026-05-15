@@ -56,6 +56,7 @@ def test_list_tools_returns_full_schema_set() -> None:
     assert tool_names == {
         "classify_soil",
         "classify_soil_1d",
+        "classify_point",
         "list_classifications",
         "classification_info",
         "saxton_rawls",

@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import contextlib as _contextlib
 
-from pedotri import audit, dem, grid, sources, uncertainty, zonal
+from pedotri import audit, dem, grid, raster, sources, uncertainty, zonal
 from pedotri.classifier import ClassifyResult, classify, classify_all
 from pedotri.errors import (
     ClassificationError,
@@ -78,6 +78,7 @@ __all__ = [
     "grid",
     "list_classifications",
     "load_classification",
+    "raster",
     "register_classification",
     "render_svg",
     "sources",

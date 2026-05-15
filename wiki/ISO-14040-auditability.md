@@ -1,148 +1,201 @@
-# ISO 14040 / 14044 auditability
+# ISO 14040 auditability
 
-[ISO 14040:2006](https://www.iso.org/standard/37456.html) (*LCA —
-Principles and framework*) and [ISO 14044:2006](https://www.iso.org/standard/38498.html)
-(*LCA — Requirements and guidelines*) impose specific traceability
-requirements on every input to a Life Cycle Assessment, including the
-soil-related Life Cycle Inventory (LCI) data many pedotri consumers
-produce. Pedotri 0.4 makes those requirements operational with a
-small audit-trail machinery that lives in `pedotri.audit`.
+If your pedotri output is going to feed a Life Cycle Assessment, an
+external auditor will eventually ask three questions about it: where
+did the data come from, what parameters did you use, and can you
+re-run the calculation and get the same numbers? `pedotri.audit`
+exists to answer all three.
 
-This page maps the ISO requirements to the pedotri features that
-satisfy them, and walks through an end-to-end example.
+It does **not** try to be a full LCA framework — pedotri is a soil
+toolkit, not openLCA. What it does is make the soil-data step of an
+LCA *defensible*: every result carries a complete provenance record,
+and the audit trail you export is the documentation a reviewer can
+hand back to you saying "yes, this is reproducible."
 
-## What ISO 14040 / 14044 actually require
+## When you need this
 
-The relevant clauses (paraphrased — read the standards for the
-authoritative wording):
+- You're producing data that goes into an ISO 14040 / 14044 LCA
+  (carbon accounting, environmental product declarations, regulated
+  sustainability reporting).
+- You need to prove to a reviewer that the same inputs always give
+  the same outputs — *not* approximately, exactly.
+- You want to document a sensitivity analysis where the same workflow
+  was run with different parameters, and have those runs distinguishable
+  by something more authoritative than a filename.
 
-| Clause | Requirement | Pedotri's answer |
-|---|---|---|
-| 14040 §4.5 / 14044 §4.5.3 | LCI data must include the source, vintage / version, geographic and technological coverage, and a quality assessment. | Every result dataclass carries a `Provenance` with `sources` (a list of `DataSource` records: name, version, URL, access timestamp, optional content hash). |
-| 14044 §4.4.5 | Calculations must be **reproducible** — a third-party reviewer must be able to re-run them and obtain the same numbers. | All MC paths take an explicit `seed=`. `Provenance.seed` records it. Re-execution with the same seed produces byte-identical sample arrays. |
-| 14044 §4.5.3 | Data quality requirements include uncertainty information. | `pedotri.Quantiles` + `AggregateDistribution.samples` carry the full posterior; downstream `combine()` propagates it. |
-| 14044 §4.4.4 | Allocation procedures must be documented. | Pedotri itself does no allocation. The audit trail's `parameters` dict records every numeric choice the caller made (depth, area, weights, ...). |
-| 14044 §6.4 | Critical review of the LCA needs a documentation trail covering goal & scope, LCI, and LCIA stages. | `AuditTrail.to_json(path)` exports a single JSON document with every step's provenance — the soil-data slice of the documentation. |
+If none of those apply, you can ignore `pedotri.audit` entirely. The
+`.provenance` field on every result defaults to populated-but-unused;
+existing code paths don't change.
 
-## The two data classes
+## Quick example
 
-```python
-from pedotri.audit import Provenance, DataSource, AuditTrail, make_source
-```
-
-### `DataSource`
-
-One external dataset that fed a computation. Fields:
-
-- `name` — stable identifier (e.g. `"ISRIC SoilGrids 2.0"`, `"ESA WorldCover"`).
-- `version` — version / revision tag (e.g. `"v2.0"`, `"v200"` for WorldCover 2021).
-- `url` — *optional* URL the data came from. Audit reviewers love
-  this; some agencies require it.
-- `accessed_utc` — *optional* ISO 8601 UTC timestamp of the fetch.
-- `content_hash` — *optional* hash (typically `"sha256:..."`) of the
-  raw bytes. Lets a reviewer detect silent drift if they re-fetch.
-- `details` — free-form dict for anything else: spatial bounding box,
-  depth, cache-hit flag.
-
-### `Provenance`
-
-One computational step. Fields:
-
-- `operation` — fully-qualified name of the operation
-  (`"pedotri.sources.soilgrids.fetch_point"`,
-  `"pedotri.zonal.zonal_aggregate"`, …).
-- `parameters` — the numerical / categorical knobs the caller turned.
-- `sources` — list of `DataSource` records consumed.
-- `upstream` — list of `Provenance` records whose outputs fed this
-  operation. Forms the LCI graph back to the original fetches.
-- `seed` — when randomness is involved, the RNG seed. `None` for
-  deterministic operations.
-- `timestamp_utc` — ISO 8601 UTC timestamp.
-- `software` — runtime metadata: pedotri version, numpy version,
-  Python version, platform.
-- `notes` — free-form annotation slot, populated by the caller for
-  things the structure doesn't already cover (justification of an
-  unusual parameter, link to a study protocol, ...).
-
-## End-to-end example
+Run a normal pedotri workflow, then look at what came back with it:
 
 ```python
 import pedotri
 from pedotri.audit import AuditTrail
-from pedotri.uncertainty import Quantiles
 from pedotri.zonal import zonal_aggregate
 
-# Suppose we ran the synthetic SOC-stock workflow:
 agg = zonal_aggregate(
-    region=region_mask,
-    properties={
-        "soc": {"mean": soc_mean, "uncertainty": Quantiles(soc_q05, soc_q95)},
-        "bd":  {"mean": bd_mean,  "uncertainty": Quantiles(bd_q05,  bd_q95)},
-    },
+    region=village_polygon,
+    properties={"soc": "soc_mean.tif", "bd": "bd_mean.tif"},
     correlation_range=2000.0,
-    correlation_model="exponential",
     n_samples=1000,
     seed=2024,
 )
-stock = agg.combine(
-    lambda soc, bd, depth=0.30, area=AREA_M2:
-        soc * 1e-3 * bd * depth * area,
-    name="soc_stock_kg",
-)
 
-# Inspect provenance on any result:
-print(agg.provenance.operation)           # 'pedotri.zonal.zonal_aggregate'
-print(agg.provenance.seed)                # 2024
-print(agg.provenance.parameters["correlation_range"])  # 2000.0
+# Every result already carries its provenance:
+print(agg.provenance.operation)                 # 'pedotri.zonal.zonal_aggregate'
+print(agg.provenance.seed)                      # 2024
+print(agg.provenance.parameters["n_samples"])   # 1000
+print(agg.provenance.software["version"])       # '0.4.0' (whatever you've installed)
 
-print(stock.provenance.operation)         # '...combine'
-print(stock.provenance.upstream[0].operation)  # back-link to the aggregation
+# combine() inherits an upstream chain:
+stock = agg.combine(lambda soc, bd: soc * 1e-3 * bd * 0.3, name="soc_stock_kg")
+print(stock.provenance.upstream[0].operation)   # back-link to the aggregation
 
-# Export the full audit log:
+# Export the chain as a single audit document:
 trail = AuditTrail(metadata={"lca_study": "wheat-rotation-2026"})
 trail.append(agg.provenance)
 trail.append(stock.provenance)
 trail.to_json("audit.json")
 ```
 
-The exported JSON is a self-contained document — no other file is
-required to reconstruct what pedotri did, modulo the original data
-files (which the `DataSource.url` and `content_hash` fields document).
+The JSON file is everything an auditor needs to re-run your numbers,
+modulo the original data files (which the trail records by name +
+version + URL + optional content hash).
 
-## Replay protocol for critical review
+## What the standards actually require
 
-A reviewer with the JSON file and access to pedotri at the recorded
-version can replay the computation:
+The relevant clauses from ISO 14040:2006 and ISO 14044:2006 — and
+which pedotri primitive answers each — are:
+
+| Standard clause | Requirement | Pedotri answer |
+|---|---|---|
+| 14040 §4.5 / 14044 §4.5.3 | LCI data must include source, vintage / version, geographic and technological coverage, and a quality assessment. | `Provenance.sources` is a list of `DataSource` records: name, version, URL, access timestamp, optional content hash. |
+| 14044 §4.4.5 | Calculations must be reproducible — a third-party reviewer must be able to re-run them and obtain the same numbers. | All MC paths accept an explicit `seed=`. `Provenance.seed` records it. Re-execution with the same seed produces byte-identical sample arrays — regression-tested in `tests/test_iso14040_auditability.py`. |
+| 14044 §4.5.3 | Data quality requirements include uncertainty information. | `pedotri.Quantiles` carries the published 90 % CI; `AggregateDistribution.samples` carries the full posterior. |
+| 14044 §4.4.4 | Allocation procedures must be documented. | Pedotri does no allocation itself. The audit trail's `parameters` dict records every numeric choice the caller made (depth, area, weights, correlation range). |
+| 14044 §6.4 | Critical review needs documentation spanning goal & scope, LCI, and LCIA. | `AuditTrail.to_json(path)` exports a single self-contained document — the soil-data slice of the documentation pack. |
+
+## The two data classes
 
 ```python
-import json
-from pedotri.audit import AuditTrail
-
-trail = AuditTrail.from_json("audit.json")
-for record in trail.records:
-    print(f"{record.operation} → seed={record.seed} → "
-          f"sources={[s.name for s in record.sources]}")
-# Pick the seed off the relevant step:
-seed = trail.records[0].seed
-# Re-run the same pedotri call with the same seed → byte-identical samples.
+from pedotri.audit import DataSource, Provenance, AuditTrail, make_source
 ```
 
-`tests/test_iso14040_auditability.py` codifies this contract:
+### `DataSource` — one external dataset
 
-- `test_zonal_aggregate_is_reproducible_with_seed` — same inputs +
-  same seed across two independent calls produce identical sample
-  arrays.
-- `test_correlated_zonal_aggregate_is_reproducible_with_seed` —
-  spatially-correlated mode is also deterministic.
-- `test_provenance_json_round_trip` — `Provenance.to_dict()` →
-  `json.loads(json.dumps(...))` → `Provenance.from_dict(...)`
-  preserves every field.
-- `test_audit_trail_json_round_trip` — same for `AuditTrail`.
-- `test_full_workflow_audit_trail_replay_identity` — full chain:
-  produce → serialise → reload → re-run with the recorded seed →
-  byte-identical samples.
+Fields:
 
-## What pedotri does *not* claim
+- `name` — stable identifier (e.g. `"ISRIC SoilGrids 2.0"`, `"ESA WorldCover"`).
+- `version` — version / revision tag (e.g. `"v2.0"`, `"v200"`).
+- `url` — *optional* URL the data came from. Audit reviewers
+  appreciate this; some agencies require it.
+- `accessed_utc` — *optional* ISO 8601 UTC timestamp of the fetch.
+- `content_hash` — *optional* hash (typically `"sha256:..."`) of the
+  raw bytes. Lets a reviewer detect silent drift if they re-fetch.
+- `details` — free-form dict for anything else: bounding box, depth,
+  cache-hit flag.
+
+Use `make_source(...)` for a tidy constructor that puts extra kwargs
+in `details`:
+
+```python
+src = make_source(
+    "ISRIC SoilGrids 2.0",
+    version="v2.0",
+    url="https://rest.isric.org/soilgrids/v2.0/properties/query",
+    accessed_utc="2026-05-15T12:00:00+00:00",
+    bbox=[2.5, 47.0, 2.6, 47.1],
+    cached=False,
+)
+```
+
+### `Provenance` — one computational step
+
+Fields:
+
+- `operation` — fully-qualified pedotri operation name
+  (`"pedotri.sources.soilgrids.fetch_point"`,
+  `"pedotri.zonal.zonal_aggregate"`, …).
+- `parameters` — the numerical / categorical knobs the caller turned.
+- `sources` — list of `DataSource` records consumed by this step.
+- `upstream` — list of `Provenance` records whose outputs fed this
+  one. Forms the LCI graph back to the original data fetches.
+- `seed` — when randomness is involved, the RNG seed.
+- `timestamp_utc` — ISO 8601 UTC timestamp.
+- `software` — runtime metadata: pedotri version, numpy version,
+  Python version, platform.
+- `notes` — free-form annotation, populated by the caller for things
+  the structure doesn't already cover.
+
+Each pedotri operation auto-populates this; you rarely construct one
+by hand unless you're recording a step that lives outside pedotri (a
+custom hydrology call, a downstream LCA calculation).
+
+### `AuditTrail` — a flat log of `Provenance` records
+
+Use when you want a single document per workflow run:
+
+```python
+trail = AuditTrail(metadata={"lca_study": "wheat-rotation-2026"})
+trail.append(agg.provenance)
+trail.append(stock.provenance)
+trail.to_json("audit.json")          # write to disk
+encoded = trail.to_json()             # or get the string
+restored = AuditTrail.from_json("audit.json")
+```
+
+`AuditTrail.metadata` is for run-level annotations: study name, auditor
+contact, scenario identifier, anything that doesn't belong on an
+individual Provenance record.
+
+## The replay contract
+
+The reviewer's contract with pedotri is: given an exported audit
+trail, the same pedotri version, and access to the recorded data
+sources, they can re-run your computation and get byte-identical
+numbers. This is regression-tested explicitly in
+`tests/test_iso14040_auditability.py`:
+
+```python
+# Original run
+first = zonal_aggregate(
+    region=region, properties=spec, n_samples=200, seed=12345,
+)
+trail = AuditTrail()
+trail.append(first.provenance)
+trail.to_json("audit.json")
+
+# Reviewer's machine, later:
+reloaded = AuditTrail.from_json("audit.json")
+seed = reloaded.records[0].seed   # 12345
+
+replay = zonal_aggregate(
+    region=region, properties=spec, n_samples=200, seed=seed,
+)
+np.testing.assert_array_equal(first["soc"].samples, replay["soc"].samples)
+# ↑ passes.
+```
+
+Reproducibility holds across:
+
+- **Independent-pixel MC** (`correlation_range=None`).
+- **Spatially-correlated MC** (`correlation_range > 0`).
+- **Per-point classification** (`classify(..., method="monte_carlo")`).
+- **`combine()`** (deterministic given the upstream sample arrays).
+
+It does **not** hold across:
+
+- Different pedotri versions (we make this visible — `software.version`
+  is on every record).
+- Different numpy versions (BLAS noise; documented limitation).
+- Different platforms (Linux vs macOS BLAS implementations differ at
+  the bit level on some operations). Same-platform replay is the
+  standard contract.
+
+## What pedotri does not claim
 
 - The JSON export is **not** an ISO 14040 LCI report. It's the
   soil-data step's traceability record, suitable for inclusion in a
@@ -150,20 +203,16 @@ seed = trail.records[0].seed
   allocation procedures, system boundaries, and impact-assessment
   methodology are out of scope for a soil-texture library.
 - Pedotri does not attest to the quality of the underlying SoilGrids
-  / WorldCover data. It documents what was used; the reviewer
-  decides whether that's adequate for their study.
-- Reproducibility is across the same pedotri version + same numpy /
-  scipy versions + same platform. Cross-version reproducibility is a
-  documented goal but not a guarantee; the `software` dict on every
-  Provenance record makes the version drift visible.
+  / WorldCover data. The trail documents what was used; the reviewer
+  decides whether that's adequate for the study.
 
 ## See also
 
 - [Regional aggregation & SOC stock](Regional-aggregation-and-SOC-stock)
-  — the workflow that most ISO 14040 / 14044 consumers run.
-- [Spatial correlation](Spatial-correlation) — the math behind
-  `correlation_range=`, which materially changes regional uncertainty
-  estimates and so should be a documented parameter choice.
+  — the workflow most ISO 14040 / 14044 consumers run.
+- [Spatial correlation](Spatial-correlation) — `correlation_range` is a
+  modelling choice that materially affects regional Q05/Q95; the audit
+  trail records it.
 - ISO 14040:2006, *Environmental management — Life cycle assessment —
   Principles and framework.*
 - ISO 14044:2006, *Environmental management — Life cycle assessment —

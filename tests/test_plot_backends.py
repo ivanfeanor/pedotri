@@ -105,4 +105,4 @@ def test_plot_module_getattr_rejects_unknown_attribute() -> None:
     """``pedotri.plot.__getattr__`` lazily imports recognised backends and
     raises AttributeError for anything else."""
     with pytest.raises(AttributeError, match="no attribute"):
-        _ = pedotri.plot.does_not_exist  # type: ignore[attr-defined]
+        _ = pedotri.plot.does_not_exist

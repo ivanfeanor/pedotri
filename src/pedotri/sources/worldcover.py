@@ -193,7 +193,7 @@ def fetch_aoi(
 
 
 def _build_provenance(bbox: tuple[float, float, float, float], year: int, *, cached: bool) -> Any:
-    """ISO 14040 provenance record for a WorldCover AOI fetch."""
+    """ISO 14067 provenance record for a WorldCover AOI fetch."""
     from pedotri.audit import Provenance, _utc_iso_now, make_source
 
     version_id, _ = _VERSION_INFO[year]

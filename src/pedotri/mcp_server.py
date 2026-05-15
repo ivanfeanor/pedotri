@@ -23,6 +23,7 @@ conversation and can call them in tool-use loops.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -30,7 +31,7 @@ import pedotri.ai
 
 if TYPE_CHECKING:
     from mcp.server import Server
-    from mcp.types import TextContent, Tool
+    from mcp.types import ImageContent, TextContent, Tool
 
 
 _INSTRUCTIONS = (
@@ -54,7 +55,7 @@ def build_server() -> Server:
     """
     try:
         from mcp.server import Server
-        from mcp.types import TextContent, Tool
+        from mcp.types import ImageContent, TextContent, Tool
     except ModuleNotFoundError as exc:  # pragma: no cover - tested elsewhere
         raise ModuleNotFoundError(
             "pedotri.mcp_server requires the 'mcp' SDK. Install with "
@@ -76,8 +77,41 @@ def build_server() -> Server:
         ]
 
     @server.call_tool()  # type: ignore[untyped-decorator]
-    async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
+    async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent | ImageContent]:
         result = pedotri.ai.run(name, arguments)
+
+        # Render-diagram results carry an SVG payload; emit it as
+        # ImageContent so MCP clients (Claude Desktop, Cursor, ...) can
+        # display the diagram inline rather than printing the SVG markup
+        # as a text blob.
+        if (
+            name == "render_diagram"
+            and "error" not in result
+            and "content" in result
+            and result.get("format") == "svg"
+        ):
+            svg_text = result["content"]
+            return [
+                ImageContent(
+                    type="image",
+                    data=base64.standard_b64encode(svg_text.encode("utf-8")).decode("ascii"),
+                    mimeType="image/svg+xml",
+                ),
+                # Minimal text companion so the model knows what was
+                # rendered without re-receiving the SVG bytes.
+                TextContent(
+                    type="text",
+                    text=json.dumps(
+                        {
+                            "format": "svg",
+                            "rendered_inline": True,
+                            "classification": arguments.get("classification"),
+                        },
+                        ensure_ascii=False,
+                    ),
+                ),
+            ]
+
         text = json.dumps(result, ensure_ascii=False)
         return [TextContent(type="text", text=text)]
 

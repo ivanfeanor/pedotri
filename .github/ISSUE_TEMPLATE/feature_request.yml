@@ -1,0 +1,37 @@
+name: Feature request
+description: Suggest a new feature or enhancement.
+title: "[Feature]: "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For substantial changes (new classifications, new PTFs, schema changes), please discuss the design here before opening a PR — it saves rework if the approach isn't a fit.
+  - type: textarea
+    id: motivation
+    attributes:
+      label: What problem does this solve?
+      description: Describe the use case, not the implementation. What is hard or impossible today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How would you like pedotri to behave? API sketch, example code, or a sentence are all welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried something else? What didn't work?
+    validations:
+      required: false
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links to primary literature, similar implementations elsewhere, standards documents, etc.
+    validations:
+      required: false

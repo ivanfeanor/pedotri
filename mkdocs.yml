@@ -67,7 +67,9 @@ nav:
       - Built-in: classifications/builtin.md
       - Custom (TOML): classifications/custom.md
       - i18n: classifications/i18n.md
+  - Units: units.md
   - Pedotransfer functions: ptf.md
   - Plotting: plotting.md
   - CLI: cli.md
+  - LLM tools and MCP: ai.md
   - API reference: api.md

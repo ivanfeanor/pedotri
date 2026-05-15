@@ -1,0 +1,56 @@
+name: New classification proposal
+description: Propose adding a new built-in soil-texture classification.
+title: "[Classification]: "
+labels: ["classification", "enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a new classification! Built-in classifications need an authoritative reference and well-defined polygon (2-D) or interval (1-D) boundaries.
+
+        If you can author the TOML yourself, please open a PR directly — see the [Custom classifications guide](https://ivanfeanor.github.io/pedotri/classifications/custom/) for the schema.
+  - type: input
+    id: name
+    attributes:
+      label: Classification name
+      placeholder: "GEPPA, KA5, etc."
+    validations:
+      required: true
+  - type: input
+    id: region
+    attributes:
+      label: Region / country of origin
+      placeholder: "Germany, Brazil, ..."
+    validations:
+      required: true
+  - type: textarea
+    id: reference
+    attributes:
+      label: Primary reference
+      description: Full citation, ideally with a URL or DOI. We avoid transcribing polygons from secondary sources where possible.
+    validations:
+      required: true
+  - type: textarea
+    id: classes
+    attributes:
+      label: Class list and boundaries
+      description: |
+        List the classes and their defining boundaries (clay %, silt %, sand % thresholds, or sieve cutoffs).
+        If the reference includes a polygon diagram or class-boundary table, please link or upload it.
+    validations:
+      required: true
+  - type: input
+    id: locale
+    attributes:
+      label: Default locale
+      description: What is the native language of the classification? (e.g. de for KA5, ru for KACHINSKY)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Additional notes
+      description: |
+        Anything else relevant: particle-size cutoffs used (USDA / ISSS / other), hierarchy or groupings, special-case axes (e.g. physical clay vs sand-clay simplex), conflicts with existing classifications.
+    validations:
+      required: false

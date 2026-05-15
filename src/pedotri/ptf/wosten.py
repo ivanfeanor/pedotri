@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING, Any, overload
 import numpy as np
 
 from pedotri.errors import InvalidInputError
+from pedotri.units import _convert_inputs
 
 if TYPE_CHECKING:
     from pedotri._types import ArrayLike, FloatArray, ScalarOrArrayLike
@@ -87,6 +88,7 @@ def wosten(
     organic_matter: float | int = ...,
     bulk_density: float | int = ...,
     topsoil: bool = ...,
+    units: str = ...,
 ) -> WostenResult: ...
 
 
@@ -99,6 +101,7 @@ def wosten(
     organic_matter: ArrayLike | float | int = ...,
     bulk_density: ArrayLike | float | int = ...,
     topsoil: bool = ...,
+    units: str = ...,
 ) -> list[WostenResult]: ...
 
 
@@ -110,27 +113,38 @@ def wosten(
     organic_matter: ScalarOrArrayLike = 1.0,
     bulk_density: ScalarOrArrayLike = 1.4,
     topsoil: bool = True,
+    units: str = "%",
 ) -> WostenResult | list[WostenResult]:
     """Estimate Mualem-van Genuchten parameters via Wösten 1999.
 
     Args:
-        sand: Percent sand, [0, 100]. Used only for input validation
-            and as part of the texture sum check; the PTF uses silt
-            and clay explicitly.
-        silt: Percent silt, (0, 100]. Must be strictly positive — the
-            PTF contains ``1/silt`` and ``ln(silt)`` terms.
-        clay: Percent clay, (0, 100]. Must be strictly positive — the
-            PTF contains ``1/clay``.
-        organic_matter: Percent organic matter, (0, 100]. Default 1.0
-            %. Must be strictly positive — the PTF contains
-            ``1/organic_matter`` and ``ln(organic_matter)``.
-        bulk_density: Dry bulk density (g/cm³). Default 1.4.
+        sand: Sand fraction. Default units: percent in [0, 100]. Used
+            only for input validation; the PTF uses silt and clay
+            explicitly.
+        silt: Silt fraction. Default units: percent. Must be strictly
+            positive — the PTF contains ``1/silt`` and ``ln(silt)`` terms.
+        clay: Clay fraction. Default units: percent. Must be strictly
+            positive — the PTF contains ``1/clay``.
+        organic_matter: Organic-*matter* fraction (not organic carbon;
+            see :func:`pedotri.units.organic_carbon_to_organic_matter`).
+            Default units: percent. Must be strictly positive.
+            Default value 1.0 %.
+        bulk_density: Dry bulk density (g/cm³). Default 1.4. Always in
+            g/cm³ regardless of the ``units`` keyword.
         topsoil: True if the sample is a topsoil horizon, False for
             subsoil. Affects alpha, n, and K_s.
+        units: Units of ``sand``, ``silt``, ``clay``, and
+            ``organic_matter``. One of ``"%"`` (default), ``"g/kg"``,
+            or ``"g/g"``.
 
     Returns:
         A :class:`WostenResult` (scalar inputs) or a list (arrays).
     """
+    if units != "%":
+        sand = _convert_inputs(sand, units)
+        silt = _convert_inputs(silt, units)
+        clay = _convert_inputs(clay, units)
+        organic_matter = _convert_inputs(organic_matter, units)
     sand_arr, silt_arr, clay_arr, om_arr, d_arr, scalar = _coerce(
         sand, silt, clay, organic_matter, bulk_density
     )

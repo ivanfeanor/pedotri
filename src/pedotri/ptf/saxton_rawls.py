@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, Any, overload
 import numpy as np
 
 from pedotri.errors import InvalidInputError
+from pedotri.units import _convert_inputs
 
 if TYPE_CHECKING:
     from pedotri._types import ArrayLike, FloatArray, ScalarOrArrayLike
@@ -78,6 +79,7 @@ def saxton_rawls(
     organic_matter: float | int = ...,
     *,
     density_factor: float = ...,
+    units: str = ...,
 ) -> SaxtonRawlsResult: ...
 
 
@@ -88,6 +90,7 @@ def saxton_rawls(
     organic_matter: ArrayLike | float | int = ...,
     *,
     density_factor: float = ...,
+    units: str = ...,
 ) -> list[SaxtonRawlsResult]: ...
 
 
@@ -97,14 +100,18 @@ def saxton_rawls(
     organic_matter: ScalarOrArrayLike = 1.0,
     *,
     density_factor: float = 1.0,
+    units: str = "%",
 ) -> SaxtonRawlsResult | list[SaxtonRawlsResult]:
     """Compute soil hydraulic properties from texture and organic matter.
 
     Args:
-        sand: Percent sand, [0, 100]. Scalar or array-like.
-        clay: Percent clay, [0, 100]. Scalar or array-like.
-        organic_matter: Percent organic matter (mass), [0, 100]. Default
-            1.0 % which is typical for agricultural mineral soils.
+        sand: Sand fraction. Default units: percent in [0, 100]. Scalar
+            or array-like.
+        clay: Clay fraction. Default units: percent in [0, 100]. Scalar
+            or array-like.
+        organic_matter: Organic-*matter* fraction (not organic carbon —
+            see note below). Default units: percent in [0, 100]. Default
+            value 1.0 % which is typical for agricultural mineral soils.
         density_factor: Compaction-adjustment multiplier on the
             regression's normal bulk density (Saxton & Rawls 2006,
             Eq. 6-7). Default ``1.0`` matches the original regression
@@ -112,6 +119,11 @@ def saxton_rawls(
             saturation and field capacity are reduced via the paper's
             density correction. Wilting point is unaffected per the
             paper. Reasonable range is ``[0.9, 1.3]``.
+        units: Units of the ``sand``, ``clay``, and ``organic_matter``
+            arguments. One of ``"%"`` (default), ``"g/kg"`` (lab reports
+            from European labs often use this for organic matter), or
+            ``"g/g"`` (0-1 mass fraction). ``density_factor`` is always
+            a dimensionless multiplier regardless of ``units``.
 
     Returns:
         A :class:`SaxtonRawlsResult` for scalar inputs, or a list of
@@ -119,8 +131,18 @@ def saxton_rawls(
 
     Raises:
         InvalidInputError: If inputs are out of range or have mismatched
-            shapes.
+            shapes, or if ``units`` is unknown.
+
+    Note:
+        Saxton-Rawls 2006 expects organic *matter*, but most lab reports
+        give organic *carbon*. Convert with
+        :func:`pedotri.units.organic_carbon_to_organic_matter` (Van
+        Bemmelen factor 1.724) before calling.
     """
+    if units != "%":
+        sand = _convert_inputs(sand, units)
+        clay = _convert_inputs(clay, units)
+        organic_matter = _convert_inputs(organic_matter, units)
     sand_arr, clay_arr, om_arr, scalar = _coerce(sand, clay, organic_matter)
 
     s = sand_arr / 100.0

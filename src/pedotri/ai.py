@@ -71,7 +71,9 @@ def _classify_soil_schema() -> dict[str, Any]:
             "Classify a soil sample on the sand-silt-clay simplex. "
             "Use for any 2-D classification (USDA, FAO, GEPPA, KA5, etc.). "
             "For 1-D classifications like Kachinsky, use classify_soil_1d. "
-            "Inputs are percentages; silt is implicit (silt = 100 - sand - clay)."
+            "Default input units are percent (0-100); silt is implicit "
+            "(silt = 100 - sand - clay). Pass units='g/kg' or units='g/g' "
+            "when the lab report uses those instead."
         ),
         "input_schema": {
             "type": "object",
@@ -79,14 +81,15 @@ def _classify_soil_schema() -> dict[str, Any]:
                 "sand": {
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 100,
-                    "description": "Percent sand, in [0, 100].",
+                    "description": (
+                        "Sand fraction. Default units: percent in [0, 100]. "
+                        "See the 'units' parameter."
+                    ),
                 },
                 "clay": {
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 100,
-                    "description": "Percent clay, in [0, 100].",
+                    "description": "Clay fraction. Default units: percent.",
                 },
                 "classification": {
                     "type": "string",
@@ -105,9 +108,24 @@ def _classify_soil_schema() -> dict[str, Any]:
                         "the 'name' field regardless."
                     ),
                 },
+                "units": _units_schema(),
             },
             "required": ["sand", "clay", "classification"],
         },
+    }
+
+
+def _units_schema() -> dict[str, Any]:
+    return {
+        "type": "string",
+        "enum": ["%", "g/kg", "g/g"],
+        "default": "%",
+        "description": (
+            "Units of the fraction inputs. '%' (default) for percent in "
+            "[0, 100]; 'g/kg' for grams per kilogram (common in European "
+            "soil lab reports for organic matter); 'g/g' for the 0-1 mass "
+            "fraction convention."
+        ),
     }
 
 
@@ -118,7 +136,8 @@ def _classify_soil_1d_schema() -> dict[str, Any]:
             "Classify a soil sample on a single axis. Used by 1-D "
             "classifications like KACHINSKY (physical clay <0.01 mm). "
             "Call classification_info first to learn which axis the "
-            "classification expects."
+            "classification expects. Default input units are percent; "
+            "pass units='g/kg' or 'g/g' to override."
         ),
         "input_schema": {
             "type": "object",
@@ -126,8 +145,10 @@ def _classify_soil_1d_schema() -> dict[str, Any]:
                 "value": {
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 100,
-                    "description": "Percent for the classification's axis (e.g. physical clay).",
+                    "description": (
+                        "Fraction for the classification's axis (e.g. "
+                        "physical clay). Default units: percent."
+                    ),
                 },
                 "classification": {
                     "type": "string",
@@ -137,6 +158,7 @@ def _classify_soil_1d_schema() -> dict[str, Any]:
                     ),
                 },
                 "locale": {"type": "string", "description": "Optional locale tag."},
+                "units": _units_schema(),
             },
             "required": ["value", "classification"],
         },
@@ -190,18 +212,31 @@ def _saxton_rawls_schema() -> dict[str, Any]:
             "hydraulic conductivity, bulk density, air-entry tension) "
             "from texture and organic matter via the Saxton & Rawls "
             "(2006) pedotransfer function. Use for any agronomy water-"
-            "balance question that starts from sand/clay/OM."
+            "balance question that starts from sand/clay/OM. "
+            "Important: organic_matter is organic MATTER, not organic "
+            "carbon. If the lab reports organic carbon (very common), "
+            "multiply by 1.724 (Van Bemmelen factor) before passing."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "sand": {"type": "number", "minimum": 0, "maximum": 100},
-                "clay": {"type": "number", "minimum": 0, "maximum": 100},
+                "sand": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Sand fraction. Default units: percent.",
+                },
+                "clay": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Clay fraction. Default units: percent.",
+                },
                 "organic_matter": {
                     "type": "number",
                     "minimum": 0,
-                    "maximum": 100,
-                    "description": "Percent organic matter (mass). Default 1.0 % if omitted.",
+                    "description": (
+                        "Organic-matter fraction (NOT organic carbon). "
+                        "Default units: percent. Default value 1.0 %."
+                    ),
                 },
                 "density_factor": {
                     "type": "number",
@@ -212,6 +247,7 @@ def _saxton_rawls_schema() -> dict[str, Any]:
                         "(default). 1.1 = 10 % more compacted."
                     ),
                 },
+                "units": _units_schema(),
             },
             "required": ["sand", "clay"],
         },
@@ -226,29 +262,52 @@ def _wosten_schema() -> dict[str, Any]:
             "K_s, L) via the European HYPRES PTF (Wösten et al. 1999). "
             "Returns parameters of the *continuous* water-retention "
             "curve; use saxton_rawls() if you need direct field-capacity "
-            "/ wilting-point numbers."
+            "/ wilting-point numbers. organic_matter is organic MATTER, "
+            "not organic carbon (multiply OC by 1.724 if needed)."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "sand": {"type": "number", "minimum": 0, "maximum": 100},
-                "silt": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
-                "clay": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+                "sand": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Sand fraction. Default units: percent.",
+                },
+                "silt": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": (
+                        "Silt fraction, strictly positive (the PTF "
+                        "contains 1/silt and ln(silt) terms). "
+                        "Default units: percent."
+                    ),
+                },
+                "clay": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Clay fraction, strictly positive. Default units: percent.",
+                },
                 "organic_matter": {
                     "type": "number",
                     "exclusiveMinimum": 0,
-                    "maximum": 100,
-                    "description": "Percent organic matter, strictly positive. Default 1.0.",
+                    "description": (
+                        "Organic-matter fraction, strictly positive. "
+                        "Default units: percent. Default value 1.0."
+                    ),
                 },
                 "bulk_density": {
                     "type": "number",
                     "exclusiveMinimum": 0,
-                    "description": "Dry bulk density (g/cm³). Default 1.4.",
+                    "description": (
+                        "Dry bulk density in g/cm³ (always; not affected "
+                        "by the units parameter). Default 1.4."
+                    ),
                 },
                 "topsoil": {
                     "type": "boolean",
                     "description": "True for topsoil, False for subsoil. Default true.",
                 },
+                "units": _units_schema(),
             },
             "required": ["sand", "silt", "clay"],
         },
@@ -259,19 +318,20 @@ def _convert_particle_size_schema() -> dict[str, Any]:
     return {
         "name": "convert_particle_size",
         "description": (
-            "Convert sand/silt/clay percentages between particle-size "
+            "Convert sand/silt/clay fractions between particle-size "
             "standards (USDA, FAO, ISSS, INTERNATIONAL, KA5) which use "
             "different sand-silt cutoffs. Required when classifying a "
             "USDA-measured sample with an ISSS-based scheme. The clay "
             "fraction (<0.002 mm) is unchanged across all standards. "
-            "Note: KACHINSKY is *not* convertible."
+            "Output is always in percent. Note: KACHINSKY is *not* "
+            "convertible."
         ),
         "input_schema": {
             "type": "object",
             "properties": {
-                "sand": {"type": "number", "minimum": 0, "maximum": 100},
-                "silt": {"type": "number", "minimum": 0, "maximum": 100},
-                "clay": {"type": "number", "minimum": 0, "maximum": 100},
+                "sand": {"type": "number", "minimum": 0},
+                "silt": {"type": "number", "minimum": 0},
+                "clay": {"type": "number", "minimum": 0},
                 "source": {
                     "type": "string",
                     "enum": ["USDA", "FAO", "ISSS", "INTERNATIONAL", "KA5"],
@@ -280,6 +340,7 @@ def _convert_particle_size_schema() -> dict[str, Any]:
                     "type": "string",
                     "enum": ["USDA", "FAO", "ISSS", "INTERNATIONAL", "KA5"],
                 },
+                "units": _units_schema(),
             },
             "required": ["sand", "silt", "clay", "source", "target"],
         },
@@ -370,8 +431,14 @@ def _h_classify_soil(args: dict[str, Any]) -> dict[str, Any]:
     clay = _require(args, "clay", (int, float))
     classification = _require(args, "classification", str)
     locale = args.get("locale")
+    units = args.get("units", "%")
     result = pedotri.classify(
-        float(sand), float(clay), classification, detailed=True, locale=locale
+        float(sand),
+        float(clay),
+        classification,
+        detailed=True,
+        locale=locale,
+        units=units,
     )
     return result.to_dict()
 
@@ -380,7 +447,10 @@ def _h_classify_soil_1d(args: dict[str, Any]) -> dict[str, Any]:
     value = _require(args, "value", (int, float))
     classification = _require(args, "classification", str)
     locale = args.get("locale")
-    result = pedotri.classify(float(value), classification, detailed=True, locale=locale)
+    units = args.get("units", "%")
+    result = pedotri.classify(
+        float(value), classification, detailed=True, locale=locale, units=units
+    )
     return result.to_dict()
 
 
@@ -428,7 +498,10 @@ def _h_saxton_rawls(args: dict[str, Any]) -> dict[str, Any]:
     clay = float(_require(args, "clay", (int, float)))
     om = float(args.get("organic_matter", 1.0))
     df = float(args.get("density_factor", 1.0))
-    return saxton_rawls(sand, clay, om, density_factor=df).to_dict()
+    units = args.get("units", "%")
+    return saxton_rawls(
+        sand, clay, om, density_factor=df, units=units
+    ).to_dict()
 
 
 def _h_wosten(args: dict[str, Any]) -> dict[str, Any]:
@@ -438,8 +511,15 @@ def _h_wosten(args: dict[str, Any]) -> dict[str, Any]:
     om = float(args.get("organic_matter", 1.0))
     bd = float(args.get("bulk_density", 1.4))
     topsoil = bool(args.get("topsoil", True))
+    units = args.get("units", "%")
     return wosten(
-        sand, silt, clay, organic_matter=om, bulk_density=bd, topsoil=topsoil
+        sand,
+        silt,
+        clay,
+        organic_matter=om,
+        bulk_density=bd,
+        topsoil=topsoil,
+        units=units,
     ).to_dict()
 
 
@@ -449,7 +529,10 @@ def _h_convert_particle_size(args: dict[str, Any]) -> dict[str, Any]:
     clay = _require(args, "clay", (int, float))
     source = _require(args, "source", str)
     target = _require(args, "target", str)
-    s, si, c = _psd_convert(sand, silt, clay, source=source, target=target)
+    units = args.get("units", "%")
+    s, si, c = _psd_convert(
+        sand, silt, clay, source=source, target=target, units=units
+    )
     return {
         "sand": float(s[0]),
         "silt": float(si[0]),

@@ -220,6 +220,34 @@ On macOS, edit `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 Claude will then see all eight pedotri tools in every conversation and can call them while reasoning about soil samples.
 
+## Units
+
+**Every fraction input in pedotri is *percent* by default** (0-100 range). Lab reports commonly use g/kg (especially for organic matter) or g/g (mass fraction); pass `units="g/kg"` or `units="g/g"` to convert at the boundary:
+
+```python
+# Same soil sample, three input conventions
+pedotri.classify(60, 20, "USDA")                        # percent (default)
+pedotri.classify(600, 200, "USDA", units="g/kg")        # g/kg
+pedotri.classify(0.6, 0.2, "USDA", units="g/g")         # mass fraction
+
+# Saxton-Rawls with organic-matter in g/kg
+saxton_rawls(sand=40, clay=20, organic_matter=20, units="g/kg")
+```
+
+The `units=` keyword is accepted by `classify()`, `saxton_rawls()`, `wosten()`, and `psd.convert()`.
+
+**Organic carbon vs. organic matter:** PTFs (Saxton-Rawls, Wösten) expect organic *matter*, but most lab reports give organic *carbon*. Convert with `pedotri.units.organic_carbon_to_organic_matter()` (Van Bemmelen factor 1.724) first:
+
+```python
+from pedotri.units import organic_carbon_to_organic_matter
+
+oc_pct = 1.16  # from lab report (% organic carbon)
+om_pct = float(organic_carbon_to_organic_matter(oc_pct)[0])  # ~2.0 %
+saxton_rawls(sand=40, clay=20, organic_matter=om_pct)
+```
+
+`pedotri.units` also exposes `g_per_kg_to_percent`, `percent_to_g_per_kg`, `g_per_g_to_percent`, `percent_to_g_per_g`, `organic_matter_to_organic_carbon`, and `to_percent` / `from_percent` for arbitrary unit identifiers.
+
 ## Pedotransfer functions
 
 Two PTFs ship in `pedotri.ptf`:

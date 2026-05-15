@@ -23,6 +23,7 @@ from pedotri.errors import InvalidInputError
 from pedotri.geometry import signed_distance_to_polygon
 from pedotri.registry import get_classification
 from pedotri.schema import Classification
+from pedotri.units import _convert_inputs
 
 if TYPE_CHECKING:
     from pedotri._types import ArrayLike, FloatArray, Locale, ScalarOrArrayLike
@@ -75,6 +76,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[False] = ...,
+    units: str = ...,
 ) -> str | None: ...
 
 
@@ -86,6 +88,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[False] = ...,
+    units: str = ...,
 ) -> list[str | None]: ...
 
 
@@ -97,6 +100,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[True],
+    units: str = ...,
 ) -> ClassifyResult: ...
 
 
@@ -108,6 +112,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[True],
+    units: str = ...,
 ) -> list[ClassifyResult]: ...
 
 
@@ -118,6 +123,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[False] = ...,
+    units: str = ...,
 ) -> str | None: ...
 
 
@@ -128,6 +134,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[False] = ...,
+    units: str = ...,
 ) -> list[str | None]: ...
 
 
@@ -138,6 +145,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[True],
+    units: str = ...,
 ) -> ClassifyResult: ...
 
 
@@ -148,6 +156,7 @@ def classify(
     *,
     locale: Locale | None = ...,
     detailed: Literal[True],
+    units: str = ...,
 ) -> list[ClassifyResult]: ...
 
 
@@ -157,6 +166,7 @@ def classify(
     classification: str | Classification,
     locale: Locale | None = ...,
     detailed: bool = ...,
+    units: str = ...,
     **axis_fractions: ScalarOrArrayLike,
 ) -> Any: ...
 
@@ -201,6 +211,10 @@ def classify(
     - **detailed** — when ``True``, returns
       :class:`ClassifyResult` objects with name, group, parent, and
       signed distance-to-boundary rather than bare strings.
+    - **units** — keyword. ``"%"`` (default), ``"g/kg"``, or ``"g/g"``.
+      Applied uniformly to every fraction input. Use ``"g/kg"`` when
+      your lab reports sand / clay / silt as g/kg (common in European
+      soil chemistry), or ``"g/g"`` for the 0-1 mass-fraction convention.
 
     Returns the matched class key (or localized name, or
     :class:`ClassifyResult`) for scalar input, or a list of those
@@ -216,7 +230,10 @@ def classify(
     classification = kwargs.pop("classification", None)
     locale: Locale | None = kwargs.pop("locale", None)
     detailed: bool = kwargs.pop("detailed", False)
+    units: str = kwargs.pop("units", "%")
     cls_obj, fractions = _parse_arguments(args, classification, kwargs)
+    if units != "%":
+        fractions = [_convert_inputs(f, units) for f in fractions]
     arrs, scalar = _coerce_fraction_arrays(fractions, cls_obj.axes)
 
     matched, distances = _classify(arrs, cls_obj)

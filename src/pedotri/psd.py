@@ -45,6 +45,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from pedotri.errors import InvalidInputError, PedotriError
+from pedotri.units import _convert_inputs
 
 if TYPE_CHECKING:
     from pedotri._types import FloatArray, ScalarOrArrayLike
@@ -72,22 +73,31 @@ def convert(
     *,
     source: str,
     target: str,
+    units: str = "%",
 ) -> tuple[FloatArray, FloatArray, FloatArray]:
-    """Convert (sand, silt, clay) percentages between particle-size standards.
+    """Convert (sand, silt, clay) fractions between particle-size standards.
 
     Args:
-        sand: Percent sand under the ``source`` standard, [0, 100].
-        silt: Percent silt under the ``source`` standard, [0, 100].
-        clay: Percent clay, [0, 100]. Unchanged across all supported
-            standards (the silt/clay boundary is universally 0.002 mm).
+        sand: Sand fraction under the ``source`` standard. Default
+            units: percent in [0, 100]. See ``units``.
+        silt: Silt fraction under the ``source`` standard.
+        clay: Clay fraction. Unchanged across all supported standards
+            (the silt/clay boundary is universally 0.002 mm).
         source: Particle-size standard name of the input, one of
             :data:`SAND_SILT_CUTOFF_MM`'s keys.
         target: Standard to convert *to*, same key set.
+        units: Units of the three fraction arguments. One of ``"%"``
+            (default), ``"g/kg"``, or ``"g/g"``. The conversion is
+            performed internally in percent and the output arrays are
+            *always returned in percent* — call
+            :func:`pedotri.units.from_percent` if you need to round-
+            trip to the source units.
 
     Returns:
-        ``(sand', silt', clay)`` arrays in the target standard. Outputs
-        are always 1-D numpy arrays; pass single-element arrays back
-        through ``float(...)`` if you need scalars.
+        ``(sand', silt', clay)`` arrays in the target standard, in
+        percent. Outputs are always 1-D numpy arrays; pass
+        single-element arrays through ``float(...)`` if you need
+        scalars.
 
     Raises:
         InvalidInputError: For unknown standards, out-of-range
@@ -101,6 +111,11 @@ def convert(
     """
     _validate_standard(source, role="source")
     _validate_standard(target, role="target")
+
+    if units != "%":
+        sand = _convert_inputs(sand, units)
+        silt = _convert_inputs(silt, units)
+        clay = _convert_inputs(clay, units)
 
     s = np.atleast_1d(np.asarray(sand, dtype=np.float64))
     si = np.atleast_1d(np.asarray(silt, dtype=np.float64))

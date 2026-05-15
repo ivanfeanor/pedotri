@@ -83,19 +83,24 @@ def test_call_tool_schema_validation_returns_is_error() -> None:
     """Inputs that violate the JSON Schema are caught by the MCP layer
     and surfaced as isError=True with a plain-text message — before
     our handler is even called. This is exactly the layered validation
-    we want for LLM tool-use loops."""
+    we want for LLM tool-use loops.
+
+    A negative value violates ``minimum: 0`` on every fraction field.
+    (We no longer cap at 100 because the ``units`` parameter accepts
+    g/kg inputs up to 1000.)
+    """
     server = build_server()
     handler = server.request_handlers[CallToolRequest]
     request = CallToolRequest(
         method="tools/call",
         params=CallToolRequestParams(
             name="classify_soil",
-            arguments={"sand": 60, "clay": 200, "classification": "USDA"},
+            arguments={"sand": 60, "clay": -5, "classification": "USDA"},
         ),
     )
     result: Any = _await(handler(request))
     assert result.root.isError is True
-    assert "100" in result.root.content[0].text
+    assert "less than" in result.root.content[0].text or "minimum" in result.root.content[0].text
 
 
 def test_call_tool_handler_error_returns_json_envelope() -> None:

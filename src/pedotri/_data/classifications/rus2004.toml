@@ -1,0 +1,129 @@
+# Russian 2004 soil-survey granulometric "variety" classification.
+#
+# The "Классификация и диагностика почв России" (2004) and the
+# subsequent field key "Полевой определитель почв России" (2008,
+# Шишов, Лебедева, Тонконогов et al.) name soils at the
+# "разновидности" (variety) level by physical-clay content, using six
+# named varieties:
+#
+#   песчаная           (sandy)
+#   супесчаная         (sandy loam / loamy sand)
+#   легкосуглинистая   (light loam)
+#   среднесуглинистая  (medium loam)
+#   тяжелосуглинистая  (heavy loam)
+#   глинистая          (clay)
+#
+# This is a six-class collapse of the canonical Качинский (1965)
+# nine-class scheme already shipped as KACHINSKY: it merges loose +
+# cohesive sand into "песчаная", and light + medium + heavy clay into
+# "глинистая". The cutoffs below are the steppe / chernozem ("основная")
+# variant of Качинский's table — the same variant pedotri's KACHINSKY
+# classification uses. Other variants exist for podzolic and laterized
+# (krasnozem / zheltozem) parent materials, which shift each boundary
+# by ~5 percentage points down; if your soil falls in those parent-
+# material classes, the variety boundaries will shift accordingly.
+#
+# Reference for the 2004 variety vocabulary:
+#   Шишов Л.Л., Тонконогов В.Д., Лебедева И.И., Герасимова М.И. (2004).
+#   Классификация и диагностика почв России. Смоленск: Ойкумена.
+# Reference for the underlying threshold table:
+#   Вадюнина А.Ф., Корчагина З.А. (1986). Методы исследования
+#   физических свойств почв. М.: Агропромиздат. Таблица 2.1.
+#
+# When to use this instead of KACHINSKY:
+#   - You need the official Russian soil-survey label as it appears in
+#     2004-and-later documents and maps.
+#   - A six-class summary is sufficient for your downstream pipeline.
+#
+# When to keep KACHINSKY:
+#   - You need the finer 9-class distinction (loose vs cohesive sand,
+#     light/medium/heavy clay).
+#   - Cross-referencing pre-1977 Russian literature.
+
+[meta]
+key = "RUS2004"
+axes = ["physical_clay"]
+default_locale = "ru"
+reference = "Шишов Л.Л., Тонконогов В.Д., Лебедева И.И., Герасимова М.И. (2004). Классификация и диагностика почв России. Смоленск: Ойкумена."
+url = "http://www.infosoil.ru/index.php?pageID=raznovid04"
+description = "Russian 2004 soil-survey 'variety' (разновидности) granulometric classification — six classes keyed on physical clay (mass fraction <0.01 mm). The official designation used in current Russian soil-survey documents and the 'Field Key to Soils of Russia' (2008). Coarser than KACHINSKY (which has 9 classes); identical underlying thresholds (steppe / chernozem variant)."
+
+[meta.names]
+ru = "Разновидности почв 2004"
+en = "Russian 2004 granulometric varieties"
+fr = "variétés granulométriques russes 2004"
+de = "russische Bodenarten-Varietäten 2004"
+es = "variedades granulométricas rusas 2004"
+pt = "variedades granulométricas russas 2004"
+
+[[class]]
+key = "sandy"
+group = "coarse"
+interval = [0, 10]
+[class.names]
+ru = "песчаная"
+en = "sandy"
+fr = "sableuse"
+de = "sandig"
+es = "arenosa"
+pt = "arenosa"
+
+[[class]]
+key = "sandy_loam"
+group = "moderately_coarse"
+interval = [10, 20]
+[class.names]
+ru = "супесчаная"
+en = "sandy loam"
+fr = "sableuse-limoneuse"
+de = "lehmig-sandig"
+es = "franco arenosa"
+pt = "franco arenosa"
+
+[[class]]
+key = "light_loam"
+group = "medium"
+interval = [20, 30]
+[class.names]
+ru = "легкосуглинистая"
+en = "light loam"
+fr = "limoneuse légère"
+de = "leichter Lehm"
+es = "franca ligera"
+pt = "franca leve"
+
+[[class]]
+key = "medium_loam"
+group = "medium"
+interval = [30, 40]
+[class.names]
+ru = "среднесуглинистая"
+en = "medium loam"
+fr = "limoneuse moyenne"
+de = "mittlerer Lehm"
+es = "franca media"
+pt = "franca média"
+
+[[class]]
+key = "heavy_loam"
+group = "moderately_fine"
+interval = [40, 50]
+[class.names]
+ru = "тяжелосуглинистая"
+en = "heavy loam"
+fr = "limoneuse lourde"
+de = "schwerer Lehm"
+es = "franca pesada"
+pt = "franca pesada"
+
+[[class]]
+key = "clay"
+group = "fine"
+interval = [50, 101]
+[class.names]
+ru = "глинистая"
+en = "clay"
+fr = "argileuse"
+de = "tonig"
+es = "arcillosa"
+pt = "argilosa"

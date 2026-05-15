@@ -70,6 +70,54 @@
 ### `pedotri.psd.SAND_SILT_CUTOFF_MM`
 ::: pedotri.psd.SAND_SILT_CUTOFF_MM
 
+## Raster (GeoTIFF) classification
+
+### `pedotri.raster.classify_array`
+::: pedotri.raster.classify_array
+
+### `pedotri.raster.classify_geotiff`
+::: pedotri.raster.classify_geotiff
+
+### `pedotri.raster.write_classified_geotiff`
+::: pedotri.raster.write_classified_geotiff
+
+### `pedotri.raster.smooth_codes`
+::: pedotri.raster.smooth_codes
+
+### `pedotri.raster.render_classified_png`
+::: pedotri.raster.render_classified_png
+
+### `pedotri.raster.classified_to_features`
+::: pedotri.raster.classified_to_features
+
+### `pedotri.raster.write_features_shapefile`
+::: pedotri.raster.write_features_shapefile
+
+### `pedotri.raster.NODATA_CODE`
+::: pedotri.raster.NODATA_CODE
+
+## Field-scale interpolation (`pedotri.interp`)
+
+### `pedotri.interp.krige_samples`
+::: pedotri.interp.krige_samples
+
+### `pedotri.interp.krige_sand_clay`
+::: pedotri.interp.krige_sand_clay
+
+## Benchmark utilities
+
+### `pedotri.bench.run_soiltexture_benchmark`
+::: pedotri.bench.run_soiltexture_benchmark
+
+### `pedotri.bench.BenchmarkReport`
+::: pedotri.bench.BenchmarkReport
+
+### `pedotri.bench.BenchmarkRow`
+::: pedotri.bench.BenchmarkRow
+
+### `pedotri.bench.generate_inputs`
+::: pedotri.bench.generate_inputs
+
 ## Exceptions
 
 ### `pedotri.PedotriError`

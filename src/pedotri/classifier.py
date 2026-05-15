@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Literal, overload
 import numpy as np
 
 from pedotri.errors import InvalidInputError
-from pedotri.geometry import signed_distance_to_polygon
+from pedotri.geometry import points_in_polygon, signed_distance_to_polygon
 from pedotri.registry import get_classification
 from pedotri.schema import Classification
 from pedotri.units import _convert_inputs
@@ -236,14 +236,15 @@ def classify(
         fractions = [_convert_inputs(f, units) for f in fractions]
     arrs, scalar = _coerce_fraction_arrays(fractions, cls_obj.axes)
 
-    matched, distances = _classify(arrs, cls_obj)
+    codes, distances = _classify(arrs, cls_obj, with_distance=detailed)
 
+    classes = cls_obj.classes
     out: list[str | None] | list[ClassifyResult]
     if detailed:
         loc = locale or cls_obj.default_locale
-        out = [_make_result(c, loc, d) for c, d in zip(matched, distances, strict=True)]
+        out = _build_detailed(codes, distances, classes, loc)
     else:
-        out = [_format_label(c, locale) for c in matched]
+        out = _build_labels(codes, classes, locale)
     return out[0] if scalar else out
 
 
@@ -347,45 +348,83 @@ def _coerce_fraction_arrays(
 
 
 def _classify(
-    arrs: list[FloatArray], c: Classification
-) -> tuple[list[TextureClass | None], FloatArray]:
-    """Dispatch to the polygon or interval matcher based on ``c.axes``."""
+    arrs: list[FloatArray], c: Classification, *, with_distance: bool = True
+) -> tuple[np.ndarray, FloatArray]:
+    """Dispatch to the polygon or interval matcher based on ``c.axes``.
+
+    Returns ``(codes, distances)``. ``codes`` is an ``int16`` array
+    where each element is either the index of the matched
+    :class:`TextureClass` in ``c.classes`` or ``-1`` for unclassified
+    points. Using int codes — rather than a Python ``list`` of
+    ``TextureClass`` references — keeps the scatter inside the class
+    loop fully vectorized and lets the result formatter index a small
+    pre-built label table once per call.
+
+    ``with_distance`` is honoured by the 2-D path: skipping the
+    per-segment distance computation roughly triples throughput on the
+    common ``classify(...)`` call where the caller doesn't ask for a
+    :class:`ClassifyResult`.
+    """
     if len(c.axes) == 2:
         points = np.column_stack(arrs)
-        return _classify_polygons(points, c)
+        return _classify_polygons(points, c, with_distance=with_distance)
     return _classify_intervals(arrs[0], c)
 
 
 def _classify_polygons(
-    points: FloatArray, c: Classification
-) -> tuple[list[TextureClass | None], FloatArray]:
-    """Match 2-D points against polygon classes (first-match-wins)."""
+    points: FloatArray, c: Classification, *, with_distance: bool
+) -> tuple[np.ndarray, FloatArray]:
+    """Match 2-D points against polygon classes (first-match-wins).
+
+    When ``with_distance`` is false, only the boolean point-in-polygon
+    test runs; ``distances`` is returned as an all-NaN array. The
+    detailed (``ClassifyResult``) path uses the signed-distance test
+    so it can populate :attr:`ClassifyResult.distance`.
+
+    A cheap axis-aligned bounding-box pre-filter wraps every polygon
+    test: only points falling within the polygon's bbox proceed to the
+    O(M·N) ray-cast / signed-distance computation. For typical
+    classifications where individual class polygons cover only a
+    fraction of the (sand %, clay %) plane, this skips the heavy work
+    for the majority of points on the majority of classes.
+    """
     n_points = points.shape[0]
-    matched: list[TextureClass | None] = [None] * n_points
+    codes = np.full(n_points, -1, dtype=np.int16)
     distances = np.full(n_points, np.nan, dtype=np.float64)
     remaining = np.ones(n_points, dtype=bool)
 
-    for cls in c.classes:
+    xs = points[:, 0]
+    ys = points[:, 1]
+
+    for idx, cls in enumerate(c.classes):
         if not remaining.any():
             break
         assert cls.vertices is not None  # guarded by Classification._validate
-        active_idx = np.flatnonzero(remaining)
+        v = cls.vertices
+        x_min, x_max = v[:, 0].min(), v[:, 0].max()
+        y_min, y_max = v[:, 1].min(), v[:, 1].max()
+        candidates = remaining & (xs >= x_min) & (xs <= x_max) & (ys >= y_min) & (ys <= y_max)
+        if not candidates.any():
+            continue
+        active_idx = np.flatnonzero(candidates)
         sub_points = points[active_idx]
-        sub_distances = signed_distance_to_polygon(sub_points, cls.vertices)
-        inside = sub_distances >= 0
+        if with_distance:
+            sub_distances = signed_distance_to_polygon(sub_points, v)
+            inside = sub_distances >= 0
+        else:
+            inside = points_in_polygon(sub_points, v)
+            sub_distances = None
         if not inside.any():
             continue
         hit_idx = active_idx[inside]
-        for i in hit_idx:
-            matched[int(i)] = cls
-        distances[hit_idx] = sub_distances[inside]
+        codes[hit_idx] = idx
+        if sub_distances is not None:
+            distances[hit_idx] = sub_distances[inside]
         remaining[hit_idx] = False
-    return matched, distances
+    return codes, distances
 
 
-def _classify_intervals(
-    values: FloatArray, c: Classification
-) -> tuple[list[TextureClass | None], FloatArray]:
+def _classify_intervals(values: FloatArray, c: Classification) -> tuple[np.ndarray, FloatArray]:
     """Match 1-D scalars against half-open intervals [low, high).
 
     The half-open convention deterministically attributes boundary
@@ -393,11 +432,11 @@ def _classify_intervals(
     The distance returned is to the nearest interval endpoint.
     """
     n = values.shape[0]
-    matched: list[TextureClass | None] = [None] * n
+    codes = np.full(n, -1, dtype=np.int16)
     distances = np.full(n, np.nan, dtype=np.float64)
     remaining = np.ones(n, dtype=bool)
 
-    for cls in c.classes:
+    for idx, cls in enumerate(c.classes):
         if not remaining.any():
             break
         assert cls.interval is not None
@@ -405,36 +444,58 @@ def _classify_intervals(
         active = remaining & (values >= low) & (values < high)
         if not active.any():
             continue
-        for i in np.flatnonzero(active):
-            matched[int(i)] = cls
-            v = float(values[i])
-            distances[i] = min(v - low, high - v)
+        codes[active] = idx
+        sub = values[active]
+        distances[active] = np.minimum(sub - low, high - sub)
         remaining &= ~active
-    return matched, distances
+    return codes, distances
 
 
 # --- Result formatting ---------------------------------------------------
 
 
-def _format_label(cls: TextureClass | None, locale: Locale | None) -> str | None:
-    if cls is None:
-        return None
-    if locale is None:
-        return cls.key
-    return cls.name(locale)
+def _build_labels(
+    codes: np.ndarray,
+    classes: tuple[TextureClass, ...],
+    locale: Locale | None,
+) -> list[str | None]:
+    """Map a vector of class indices to a list of label strings.
 
-
-def _make_result(
-    cls: TextureClass | None,
-    locale: Locale,
-    distance: float,
-) -> ClassifyResult:
-    if cls is None:
-        return ClassifyResult(key=None, name="", group=None, parent=None, distance=float("nan"))
-    return ClassifyResult(
-        key=cls.key,
-        name=cls.name(locale),
-        group=cls.group,
-        parent=cls.parent,
-        distance=float(distance),
+    The label table is computed once per call (one entry per class) and
+    a single Python-level pass over ``codes.tolist()`` produces the
+    output. This avoids the per-point Python attribute access that
+    dominated the non-detailed path's profile.
+    """
+    labels = (
+        [cls.key for cls in classes] if locale is None else [cls.name(locale) for cls in classes]
     )
+    return [None if c < 0 else labels[c] for c in codes.tolist()]
+
+
+def _build_detailed(
+    codes: np.ndarray,
+    distances: FloatArray,
+    classes: tuple[TextureClass, ...],
+    locale: Locale,
+) -> list[ClassifyResult]:
+    """Map a vector of class indices + distances to :class:`ClassifyResult`s."""
+    names = [cls.name(locale) for cls in classes]
+    out: list[ClassifyResult] = []
+    code_list = codes.tolist()
+    dist_list = distances.tolist()
+    unclassified = ClassifyResult(key=None, name="", group=None, parent=None, distance=float("nan"))
+    for c, d in zip(code_list, dist_list, strict=True):
+        if c < 0:
+            out.append(unclassified)
+            continue
+        cls = classes[c]
+        out.append(
+            ClassifyResult(
+                key=cls.key,
+                name=names[c],
+                group=cls.group,
+                parent=cls.parent,
+                distance=d,
+            )
+        )
+    return out

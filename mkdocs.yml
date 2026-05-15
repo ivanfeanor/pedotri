@@ -70,6 +70,7 @@ nav:
   - Units: units.md
   - Pedotransfer functions: ptf.md
   - Plotting: plotting.md
+  - Raster (GeoTIFF): raster.md
   - CLI: cli.md
   - LLM tools and MCP: ai.md
   - API reference: api.md

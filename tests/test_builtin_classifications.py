@@ -33,6 +33,7 @@ _BUILTIN = [
     "ptg",
     "china",
     "avery",
+    "rus2004",
 ]
 
 
@@ -188,6 +189,46 @@ def test_kachinsky_detailed_distance_to_interval_edge() -> None:
     result = pedotri.classify(15, "KACHINSKY", detailed=True)
     assert result.key == "sandy_loam"
     assert result.distance == 5.0
+
+
+def test_rus2004_has_six_classes() -> None:
+    c = _load("rus2004")
+    assert c.axes == ("physical_clay",)
+    assert len(c.classes) == 6
+
+
+def test_rus2004_reference_points() -> None:
+    # Six-class collapse of the steppe-variant Kachinsky table.
+    assert pedotri.classify(5, "RUS2004") == "sandy"
+    assert pedotri.classify(15, "RUS2004") == "sandy_loam"
+    assert pedotri.classify(25, "RUS2004") == "light_loam"
+    assert pedotri.classify(35, "RUS2004") == "medium_loam"
+    assert pedotri.classify(45, "RUS2004") == "heavy_loam"
+    assert pedotri.classify(70, "RUS2004") == "clay"
+    assert pedotri.classify(95, "RUS2004") == "clay"
+
+
+def test_rus2004_default_locale_is_russian() -> None:
+    c = _load("rus2004")
+    assert c.default_locale == "ru"
+    assert c.class_by_key("sandy").name("ru") == "песчаная"
+    assert c.class_by_key("clay").name("ru") == "глинистая"
+
+
+def test_rus2004_is_strict_coarsening_of_kachinsky() -> None:
+    """Every RUS2004 boundary must coincide with a KACHINSKY boundary.
+
+    RUS2004 is a six-class collapse of the nine-class KACHINSKY scheme
+    (loose+cohesive sand → 'sandy', the three clay classes → 'clay').
+    Boundary drift between the two would silently produce inconsistent
+    results between users picking one or the other.
+    """
+    rus = _load("rus2004")
+    kach = _load("kachinsky")
+    rus_edges = {edge for cls in rus.classes for edge in (cls.interval or ())}
+    kach_edges = {edge for cls in kach.classes for edge in (cls.interval or ())}
+    # Every RUS2004 boundary must be present in KACHINSKY.
+    assert rus_edges <= kach_edges
 
 
 def test_geppa_default_locale_is_french() -> None:

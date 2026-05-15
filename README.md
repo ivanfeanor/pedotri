@@ -25,6 +25,9 @@ pip install "pedotri[plotly]"       # interactive plots
 pip install "pedotri[pandas]"       # DataFrame accessor
 pip install "pedotri[polars]"       # Polars accessor
 pip install "pedotri[mcp]"          # MCP server for Claude Desktop / Cursor
+pip install "pedotri[raster]"       # GeoTIFF + smoothing (rasterio + scipy)
+pip install "pedotri[vector]"       # Shapefile / GeoJSON output (shapely + fiona)
+pip install "pedotri[interp]"       # Ordinary kriging for field samples (pykrige)
 pip install "pedotri[all]"          # everything
 ```
 
@@ -77,6 +80,7 @@ result.distance  # positive when strictly inside the class polygon
 | `CHINA`         | China           | sand, clay        | 6       | GB/T 17296-2009 (Chinese national standard)        |
 | `EMBRAPA`       | Brazil          | sand, clay        | 5       | Embrapa, SiBCS 5ª ed. 2018                         |
 | `KACHINSKY`     | Russia / CIS    | physical_clay     | 9       | Качинский 1965 (1-D classification by <0.01 mm fraction) |
+| `RUS2004`       | Russia (current)| physical_clay     | 6       | Шишов и др. 2004 (Russian 2004 6-class "разновидности") |
 
 ## API for one- and two-axis classifications
 
@@ -290,6 +294,131 @@ w.l                         # Mualem pore-connectivity parameter
 ```
 
 Both functions accept either scalar inputs (returning one result object) or array-like inputs (returning a list).
+
+## Raster classification (GeoTIFFs)
+
+Classify whole rasters of sand and clay (e.g. ISRIC SoilGrids tiles)
+into a class-coded output raster with one call. `pip install
+'pedotri[raster]'` pulls in the rasterio dependency:
+
+```python
+from pedotri.raster import classify_geotiff, write_classified_geotiff
+
+codes, keys, profile = classify_geotiff(
+    sand="sand_0-5cm_mean.tif",
+    clay="clay_0-5cm_mean.tif",
+    classification="USDA",
+    units="g/kg",  # SoilGrids native units
+)
+write_classified_geotiff("usda.tif", codes, profile=profile, keys=keys)
+```
+
+The output is a paletted **uint8** GeoTIFF with class names embedded
+as band metadata and a color table — QGIS / `gdalinfo` pick up both
+the legend and the colors automatically. Same call also produces a
+PNG (`render_classified_png`) and a Shapefile
+(`classified_to_features` + `write_features_shapefile`).
+
+![USDA texture, central France 0-5 cm](docs/images/usda_central_france.png)
+
+*A 2°×2° SoilGrids tile of central France (740 745 pixels at 250 m),
+classified under USDA and smoothed with a 3×3 majority filter. Full
+pipeline classifies in ~0.12 s on a 2024 M-series Mac.* [The
+underlying GeoTIFF](docs/images/usda_central_france.tif) is a 50 KB
+paletted file — drop it into QGIS to see the color table and class
+names automatically. See
+[`examples/soilgrids_france.py`](examples/soilgrids_france.py) for the
+full pipeline (download → classify → smooth → render).
+
+Need just the numpy path (no rasterio)?
+
+```python
+from pedotri.raster import classify_array
+codes, keys = classify_array(sand_array, clay_array,
+                             classification="USDA", units="g/kg")
+```
+
+## Map products: smoothing, color, PNG, vector
+
+The raster module also bundles everything you need to ship a usable
+map:
+
+```python
+from pedotri.raster import (
+    smooth_codes, write_classified_geotiff,
+    render_classified_png, classified_to_features,
+    write_features_shapefile,
+)
+
+# Remove salt-and-pepper noise with a 3x3 majority filter
+smoothed = smooth_codes(codes, window=3, iterations=2)
+
+# Paletted uint8 GeoTIFF (QGIS picks up the colors and class names)
+write_classified_geotiff("usda.tif", smoothed, profile=profile, keys=keys)
+
+# PNG with a side colorbar legend
+render_classified_png("usda.png", smoothed, keys=keys,
+                      title="USDA texture", extent=(2, 4, 46, 48))
+
+# Polygonize → Shapefile (or .gpkg / .geojson)
+features = classified_to_features(smoothed, keys=keys,
+                                   transform=profile["transform"])
+write_features_shapefile(features, "usda.shp", crs=str(profile["crs"]))
+```
+
+## Field-scale sampling (kriging)
+
+When you only have a handful of in-situ samples and a field boundary,
+`pedotri.interp` ordinary-krieges sand and clay onto a regular grid
+ready for `classify_array`:
+
+```python
+from pedotri.interp import krige_sand_clay
+from shapely.geometry import Polygon
+
+samples = [{"x": 12.3, "y": 87.1, "sand": 42.0, "clay": 18.0}, ...]
+boundary = Polygon([(0, 0), (100, 0), (100, 100), (0, 100)])
+
+sand_grid, clay_grid, profile = krige_sand_clay(
+    samples, bbox=(0, 0, 100, 100), resolution=1.0,
+    variogram="spherical", mask_polygon=boundary, crs="EPSG:32631",
+)
+codes, keys = classify_array(sand_grid, clay_grid, classification="USDA")
+```
+
+![Field-scale kriged map](docs/images/field_usda.png)
+
+*Synthesized 100 m × 100 m field with 20 in-situ samples (SE→NW sand
+gradient), kriged on a 1 m grid, classified under USDA, smoothed
+3×3. The field boundary is a hexagonal polygon — cells outside it are
+left transparent.* See [`examples/field_kriging.py`](examples/field_kriging.py)
+for the full pipeline.
+
+For a more realistic minimal-survey scenario — a random ~10 ha field
+with **just three samples** — see
+[`examples/central_france_field.py`](examples/central_france_field.py)
+and the [Examples gallery](https://github.com/ivanfeanor/pedotri/wiki/Examples-gallery):
+
+![10 ha field with 3 samples](docs/images/central_france_field.png)
+
+## Benchmark
+
+`pedotri.classify` is ~50× faster than the [`soiltexture`](https://pypi.org/project/soiltexture/)
+Python package on USDA classification (100 % output agreement):
+
+| n_points | pedotri | soiltexture | speedup |
+|---------:|--------:|------------:|--------:|
+|     1,000 | 1.5 M/s  | 130 k/s | **11.7 ×** |
+|    10,000 | 4.9 M/s  | 134 k/s | **36.7 ×** |
+|   100,000 | 6.2 M/s  | 132 k/s | **46.8 ×** |
+|   740,745 | 6.3 M/s  | 130 k/s | **48.3 ×** |
+
+Reproduce on your hardware:
+
+```bash
+pip install pedotri soiltexture
+python examples/bench_soiltexture.py
+```
 
 ## License
 

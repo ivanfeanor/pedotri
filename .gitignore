@@ -57,3 +57,21 @@ docs/_build/
 .env
 .env.local
 *.log
+
+# Outputs from examples/soilgrids_france.py — regenerated on every run.
+# The sand/silt/clay input tiles ARE committed (~1.8 MB) so the
+# raster test in tests/test_raster.py exercises the full GeoTIFF path.
+tests/data/soilgrids_france/usda_*.tif
+tests/data/soilgrids_france/usda_*.png
+tests/data/soilgrids_france/usda_*.shp
+tests/data/soilgrids_france/usda_*.dbf
+tests/data/soilgrids_france/usda_*.shx
+tests/data/soilgrids_france/usda_*.prj
+tests/data/soilgrids_france/usda_*.cpg
+tests/data/soilgrids_france/*.aux.xml
+
+# Outputs from examples/field_kriging.py
+examples/field_output/
+
+# Outputs from examples/central_france_field.py
+examples/central_france_output/

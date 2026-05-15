@@ -791,7 +791,7 @@ def _build_zonal_provenance(
     n_eff: int,
     n_region: int,
 ) -> Any:
-    """ISO 14040 provenance for one ``zonal_aggregate`` invocation."""
+    """ISO 14067 provenance for one ``zonal_aggregate`` invocation."""
     from pedotri.audit import Provenance
 
     # Collect upstream provenance from any source-derived inputs the

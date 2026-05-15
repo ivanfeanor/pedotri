@@ -165,7 +165,7 @@ def main() -> None:
         f"σ={stock.std:7.2f}"
     )
 
-    # --- 0.4: ISO 14040 audit trail ------------------------------------
+    # --- 0.4: ISO 14067 audit trail ------------------------------------
     # Every result already carries its own ``provenance`` record; the
     # ``AuditTrail`` collector is just a flat log you'd typically save
     # alongside the result for a reviewer.

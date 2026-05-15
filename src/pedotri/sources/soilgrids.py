@@ -290,7 +290,7 @@ def _build_provenance(
     cached: bool,
     url: str,
 ) -> Any:
-    """Construct an ISO 14040-style :class:`~pedotri.audit.Provenance` record."""
+    """Construct an ISO 14067-style :class:`~pedotri.audit.Provenance` record."""
     from pedotri.audit import Provenance, _utc_iso_now, make_source
 
     source = make_source(

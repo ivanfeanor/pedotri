@@ -1,10 +1,12 @@
-"""ISO 14040 / 14044 auditability tests.
+"""ISO 14067 auditability tests (inheriting 14040 / 14044 LCI machinery).
 
-These checks codify what an external LCA auditor would verify before
-accepting a pedotri-derived value as an LCI input:
+These checks codify what an external product-CF auditor would verify
+before accepting a pedotri-derived value as an LCI input feeding a
+14067 carbon footprint of products:
 
 1. **Reproducibility** — same inputs + same seed produce byte-identical
-   results across independent runs (§4.5.3 quality requirement).
+   results across independent runs (14044 §4.4.5 / §4.5.3 quality
+   requirement, inherited by 14067).
 2. **Provenance completeness** — every result carries a Provenance
    record naming the operation, parameters, software version, and
    upstream data sources.
@@ -38,7 +40,7 @@ def _uniform_property(shape: tuple[int, int], mean: float, halfwidth: float) -> 
     return {"mean": m, "uncertainty": Quantiles(m - halfwidth, m + halfwidth)}
 
 
-# --- ISO 14040 §4.5.3 reproducibility ------------------------------------
+# --- 14044 §4.4.5 / §4.5.3 reproducibility (inherited by 14067) ----------
 
 
 def test_zonal_aggregate_is_reproducible_with_seed() -> None:
@@ -283,7 +285,7 @@ def test_full_workflow_audit_trail_replay_identity() -> None:
     The seeded result must match the audit record's claimed parameters
     *and* re-running with the same seed produces identical samples —
     that's the practical definition of "reviewer-reproducible" for an
-    ISO 14040 LCI step.
+    ISO 14067 LCI step (anchored on 14044 §4.4.5).
     """
     shape = (12, 12)
     region = np.ones(shape, dtype=bool)

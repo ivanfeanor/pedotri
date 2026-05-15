@@ -208,6 +208,6 @@ not for production.
   — `correlation_range=` in context.
 - [Uncertainty-aware classification](Uncertainty-aware-classification)
   — the per-pixel uncertainty story that this regional layer builds on.
-- [ISO 14040 auditability](ISO-14040-auditability) — when you report a
+- [ISO 14067 auditability](ISO-14067-auditability) — when you report a
   regional Q05/Q95, the audit trail must record the correlation range
   you used.

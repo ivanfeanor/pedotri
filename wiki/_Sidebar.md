@@ -13,7 +13,7 @@
 - [Units-and-organic-matter](Units-and-organic-matter)
 
 **Compliance**
-- [ISO 14040 auditability](ISO-14040-auditability)
+- [ISO 14067 auditability](ISO-14067-auditability)
 
 **Use cases**
 - [Examples-gallery](Examples-gallery)

@@ -1,22 +1,31 @@
-# ISO 14040 auditability
+# ISO 14067 auditability
 
-If your pedotri output is going to feed a Life Cycle Assessment, an
-external auditor will eventually ask three questions about it: where
-did the data come from, what parameters did you use, and can you
-re-run the calculation and get the same numbers? `pedotri.audit`
-exists to answer all three.
+If your pedotri output is going to feed an ISO 14067 product carbon
+footprint, an external auditor will eventually ask three questions
+about it: where did the data come from, what parameters did you use,
+and can you re-run the calculation and get the same numbers?
+`pedotri.audit` exists to answer all three.
 
-It does **not** try to be a full LCA framework — pedotri is a soil
-toolkit, not openLCA. What it does is make the soil-data step of an
-LCA *defensible*: every result carries a complete provenance record,
-and the audit trail you export is the documentation a reviewer can
-hand back to you saying "yes, this is reproducible."
+14067 inherits its life cycle inventory (LCI) machinery from 14040 +
+14044, so the *primitives* this page documents — provenance records,
+data-source manifests, seed-based byte-identical replay — are
+identically applicable to a general 14040/14044 LCA. The framing on
+this page targets 14067 because that's where most pedotri users land:
+agricultural / forestry product carbon footprints where soil enters
+through §6.4.5 (soil C stock change) and §6.4.9 (land use change).
+
+It does **not** try to be a full carbon-accounting framework — pedotri
+is a soil toolkit, not openLCA or SimaPro. What it does is make the
+soil-data step of a product CF *defensible*: every result carries a
+complete provenance record, and the audit trail you export is the
+documentation a reviewer can hand back to you saying "yes, this is
+reproducible."
 
 ## When you need this
 
-- You're producing data that goes into an ISO 14040 / 14044 LCA
-  (carbon accounting, environmental product declarations, regulated
-  sustainability reporting).
+- You're producing data that goes into an ISO 14067 product carbon
+  footprint, or a general ISO 14040 / 14044 LCA (environmental product
+  declarations, regulated sustainability reporting).
 - You need to prove to a reviewer that the same inputs always give
   the same outputs — *not* approximately, exactly.
 - You want to document a sensitivity analysis where the same workflow
@@ -67,16 +76,19 @@ version + URL + optional content hash).
 
 ## What the standards actually require
 
-The relevant clauses from ISO 14040:2006 and ISO 14044:2006 — and
-which pedotri primitive answers each — are:
+The relevant clauses from ISO 14067:2018 — together with the 14040 /
+14044 clauses 14067 §6.3 explicitly inherits — and which pedotri
+primitive answers each, are:
 
 | Standard clause | Requirement | Pedotri answer |
 |---|---|---|
-| 14040 §4.5 / 14044 §4.5.3 | LCI data must include source, vintage / version, geographic and technological coverage, and a quality assessment. | `Provenance.sources` is a list of `DataSource` records: name, version, URL, access timestamp, optional content hash. |
-| 14044 §4.4.5 | Calculations must be reproducible — a third-party reviewer must be able to re-run them and obtain the same numbers. | All MC paths accept an explicit `seed=`. `Provenance.seed` records it. Re-execution with the same seed produces byte-identical sample arrays — regression-tested in `tests/test_iso14040_auditability.py`. |
-| 14044 §4.5.3 | Data quality requirements include uncertainty information. | `pedotri.Quantiles` carries the published 90 % CI; `AggregateDistribution.samples` carries the full posterior. |
-| 14044 §4.4.4 | Allocation procedures must be documented. | Pedotri does no allocation itself. The audit trail's `parameters` dict records every numeric choice the caller made (depth, area, weights, correlation range). |
-| 14044 §6.4 | Critical review needs documentation spanning goal & scope, LCI, and LCIA. | `AuditTrail.to_json(path)` exports a single self-contained document — the soil-data slice of the documentation pack. |
+| **14067 §6.3.6** (referencing 14044 §4.2 / §4.3) | LCI data must include source, vintage / version, geographic and technological coverage, and a quality assessment. | `Provenance.sources` is a list of `DataSource` records: name, version, URL, access timestamp, optional content hash. |
+| **14067 §6.4.5** (soil carbon stock change) | Soil C stock change must be quantified over a defined inventory period using a documented method. | *Boundary:* pedotri produces the **t₀ stock + uncertainty** at each point in time with full traceability. The Δ-over-time calculation is a downstream concern; pedotri's seed-replay guarantee is what makes a t₀-vs-t₁ comparison defensible (run pedotri twice with comparable methodology, take the difference downstream). |
+| **14067 §6.4.9** (land use change) | dLUC / iLUC emissions must be traceable to a documented land-cover dataset and time window. | `pedotri.sources.worldcover` populates a `DataSource` with version (`v100` / `v200`), bounding box, and access timestamp on every fetch; the downstream LUC accounting step extends `Provenance.upstream` to record its own land-cover-change calculation. |
+| **14044 §4.4.5** (inherited by 14067) | Calculations must be reproducible — a third-party reviewer must be able to re-run them and obtain the same numbers. | All MC paths accept an explicit `seed=`. `Provenance.seed` records it. Re-execution with the same seed produces byte-identical sample arrays — regression-tested in `tests/test_iso14067_auditability.py`. |
+| **14044 §4.5.3** (inherited by 14067) | Data quality requirements include uncertainty information. | `pedotri.Quantiles` carries the published 90 % CI; `AggregateDistribution.samples` carries the full posterior. |
+| **14044 §4.4.4** (inherited by 14067) | Allocation procedures must be documented. | Pedotri does no allocation itself. The audit trail's `parameters` dict records every numeric choice the caller made (depth, area, weights, correlation range). |
+| **14067 §7** (critical review) | Critical review needs documentation spanning goal & scope, LCI, and LCIA / characterization. | `AuditTrail.to_json(path)` exports a single self-contained document — the soil-data slice of the documentation pack. |
 
 ## The two data classes
 
@@ -157,7 +169,7 @@ The reviewer's contract with pedotri is: given an exported audit
 trail, the same pedotri version, and access to the recorded data
 sources, they can re-run your computation and get byte-identical
 numbers. This is regression-tested explicitly in
-`tests/test_iso14040_auditability.py`:
+`tests/test_iso14067_auditability.py`:
 
 ```python
 # Original run
@@ -195,24 +207,54 @@ It does **not** hold across:
   the bit level on some operations). Same-platform replay is the
   standard contract.
 
-## What pedotri does not claim
+## Scope boundary: what pedotri owns vs. what downstream owns
 
-- The JSON export is **not** an ISO 14040 LCI report. It's the
-  soil-data step's traceability record, suitable for inclusion in a
-  larger LCA documentation package. The goal-and-scope section,
-  allocation procedures, system boundaries, and impact-assessment
-  methodology are out of scope for a soil-texture library.
+Pedotri's scope is deliberately bounded. It owns the **soil state at a
+moment in time, with full uncertainty quantification and traceability**.
+A product CF needs more than that, and the rest lives in the LCA /
+carbon-accounting tool downstream of pedotri. The split is intentional:
+if pedotri tried to own the missing pieces, it would conflate
+measurement uncertainty (which it handles well) with temporal model
+uncertainty, allocation choices, and impact methodology (which are
+different epistemic problems).
+
+| Concern | Owner | How it connects to pedotri's audit |
+|---|---|---|
+| t₀ soil state (texture, SOC, BD, etc.) and its uncertainty | **pedotri** | Native — every result carries `Provenance` and `Quantiles` / `AggregateDistribution.samples`. |
+| ΔSOC over an inventory period (14067 §6.4.5) | **downstream** | Downstream tool runs pedotri twice (t₀ and t₁) with consistent methodology, takes the difference, and appends its own `Provenance` to `upstream` referencing both pedotri runs. The seed-replay guarantee is what makes this defensible. |
+| GWP characterization (CO₂e from C) | **downstream** | The downstream tool's `Provenance` records the AR4 / AR5 / AR6 GWP100 choice; pedotri's record is upstream of that step. |
+| Functional unit + reference flow | **downstream** | Out of scope here; the audit trail's `AuditTrail.metadata` is a convenient place to record the FU on the run, but pedotri does not normalize to it. |
+| Allocation procedures (14044 §4.4.4 inherited) | **downstream** | Pedotri performs no allocation. Numeric choices it does make (depth weights, area, correlation range) are in `Provenance.parameters` for the reviewer. |
+| System boundaries, goal & scope, biogenic vs fossil flagging | **downstream** | Out of scope. |
+
+The audit-trail JSON format is the **contract between pedotri and
+those downstream tools**. The `Provenance.upstream` chain is a handoff
+socket: a downstream tool appends its own record pointing back to
+pedotri's, and the LCI graph extends without anyone having to retrofit
+anything.
+
+A consequence worth highlighting: the JSON export is **not** an
+ISO 14067 product CF report on its own. It's the soil-data slice,
+suitable for inclusion in a larger product-CF documentation package.
+
+Two further non-claims:
+
 - Pedotri does not attest to the quality of the underlying SoilGrids
   / WorldCover data. The trail documents what was used; the reviewer
   decides whether that's adequate for the study.
+- Pedotri does not characterize biogenic vs fossil carbon. Soil C is
+  biogenic by default in any reasonable ag/forestry context, but
+  flagging that distinction is the downstream tool's responsibility.
 
 ## See also
 
 - [Regional aggregation & SOC stock](Regional-aggregation-and-SOC-stock)
-  — the workflow most ISO 14040 / 14044 consumers run.
+  — the workflow most ISO 14067 / 14044 consumers run.
 - [Spatial correlation](Spatial-correlation) — `correlation_range` is a
   modelling choice that materially affects regional Q05/Q95; the audit
   trail records it.
+- ISO 14067:2018, *Greenhouse gases — Carbon footprint of products —
+  Requirements and guidelines for quantification.*
 - ISO 14040:2006, *Environmental management — Life cycle assessment —
   Principles and framework.*
 - ISO 14044:2006, *Environmental management — Life cycle assessment —

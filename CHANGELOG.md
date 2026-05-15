@@ -6,19 +6,46 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and 
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-05-15
+
+### Changed
+
+- **Audit framing retargeted: ISO 14040 → ISO 14067.** The 0.4 audit
+  module shipped labelled against ISO 14040 (general LCA), but the
+  intended audience — agricultural / forestry product carbon
+  footprints where soil enters through stock-change and land-use-change
+  clauses — is governed by ISO 14067:2018. 14067 inherits its LCI
+  machinery from 14040 + 14044, so no code behaviour changes; this is
+  a docs-only release that corrects the label everywhere it appears.
+- **Wiki page renamed** `ISO-14040-auditability` → `ISO-14067-auditability`
+  with a rewritten clause table now anchored on 14067 §6.3.6 (data
+  quality), §6.4.5 (soil C stock change), §6.4.9 (land use change),
+  and §7 (critical review), with inherited 14044 §4.4.5 / §4.5.3
+  clauses called out alongside.
+- **Test file renamed** `tests/test_iso14040_auditability.py` →
+  `tests/test_iso14067_auditability.py`. Test logic unchanged.
+- **Scope-boundary section added** to the wiki page making the split
+  between pedotri (t₀ soil state + uncertainty + traceability) and
+  downstream tools (ΔSOC over time, GWP, functional unit, allocation)
+  explicit, with the `Provenance.upstream` chain documented as the
+  handoff-socket contract.
+- **Module docstrings** in `pedotri.audit`, `pedotri.zonal`, and
+  `pedotri.sources.{soilgrids,worldcover}` updated to reference
+  ISO 14067 as the primary target.
+
 ## [0.4.0] — 2026-05-15
 
 ### Added
 
-#### 0.4 — geospatial plumbing, spatial correlation, DEM, ISO 14040
+#### 0.4 — geospatial plumbing, spatial correlation, DEM, ISO 14067 auditability
 
 - **`pedotri.grid`** — `TargetGrid` dataclass (CRS + affine + width + height) with `from_profile` / `from_bounds` constructors. `reproject_to_grid(array, profile, target)` and `align_to_grid(sources, target=)` warp heterogeneous inputs onto a common grid via `rasterio.warp` with per-dtype resampling defaults (nearest for integers, bilinear when upsampling continuous, average when downsampling continuous). Documented affine + GDAL inverse-mapping math.
 - **`zonal_aggregate(target_grid=)`** — path-based property bands and the mask raster are auto-aligned to the target grid before the AOI is computed. ndarray inputs stay raw. Fixes the "SoilGrids 250 m + WorldCover 10 m" mismatch that 0.3 left to the user.
 - **`pedotri.uncertainty.sample_correlated_field`** — FFT-based circulant-embedding sampler (Davies 1987 / Wood & Chan 1994) for spatially-correlated Gaussian fields with three isotropic correlation kernels: exponential (default, Matérn ν=½), Gaussian, and spherical. Documented variance-preservation proof; regression tests verify empirical correlation matches `exp(−d / L)` within 0.1 absolute on 600-sample grids.
 - **`zonal_aggregate(correlation_range=, correlation_model=)`** — opt-in spatially-correlated MC for regional aggregation. Turns the documented "lower bound" on regional Q05/Q95 into a real bound by sampling whole correlated fields instead of independent pixels.
 - **`pedotri.dem`** — `slope` / `aspect` (Horn 1981), `profile_curvature` / `plan_curvature` (Zevenbergen & Thorne 1987), and `topographic_wetness_index` (Beven & Kirkby 1979). Pure numpy, with the published formulas inline in the docstrings + a wiki page covering the derivations.
-- **`pedotri.audit`** — `Provenance`, `DataSource`, `AuditTrail` for ISO 14040 / 14044 LCI auditability. Every result dataclass (`SoilGridsPoint`, `WorldCoverAOI`, `ZonalAggregate`, `AggregateDistribution`) gains an optional `.provenance` field auto-populated by its producer. `AuditTrail.to_json(path)` exports a self-contained traceability log with operation, parameters, sources, seed, software version, and the upstream chain. Replayable: same seed + same parameters → byte-identical samples (regression-tested).
-- **Four new wiki pages**: `Reprojection-and-target-grids`, `Spatial-correlation`, `DEM-derived-indices`, `ISO-14040-auditability`. Each carries the math and references (Davies 1987; Wood & Chan 1994; Horn 1981; Zevenbergen & Thorne 1987; Beven & Kirkby 1979; ISO 14040:2006 / 14044:2006).
+- **`pedotri.audit`** — `Provenance`, `DataSource`, `AuditTrail` for ISO 14067 auditability (inheriting 14040 / 14044 LCI machinery). Every result dataclass (`SoilGridsPoint`, `WorldCoverAOI`, `ZonalAggregate`, `AggregateDistribution`) gains an optional `.provenance` field auto-populated by its producer. `AuditTrail.to_json(path)` exports a self-contained traceability log with operation, parameters, sources, seed, software version, and the upstream chain. Replayable: same seed + same parameters → byte-identical samples (regression-tested). *(Originally shipped 0.4.0 labelled against 14040; relabelled to 14067 in 0.4.1.)*
+- **Four new wiki pages**: `Reprojection-and-target-grids`, `Spatial-correlation`, `DEM-derived-indices`, `ISO-14067-auditability`. Each carries the math and references (Davies 1987; Wood & Chan 1994; Horn 1981; Zevenbergen & Thorne 1987; Beven & Kirkby 1979; ISO 14067:2018; ISO 14040:2006 / 14044:2006).
 - **`examples/aoi_soc_stock.py`** refreshed to use `correlation_range=` and expose the audit trail in the printed summary — the SOC stock Q05/Q95 now visibly widens (from ~2 t to ~16 t on the synthetic 5 000 ha AOI) when the correlated sampler kicks in, matching the documented expectation.
 
 #### API polish pass — ergonomic refactor of the 0.3 surface

@@ -1,13 +1,17 @@
-"""Provenance + audit trail support for ISO 14040 / 14044 LCA workflows.
+"""Provenance + audit trail support for ISO 14067 product carbon footprints.
 
-ISO 14040:2006 §4.5 ("Life cycle inventory analysis") and §4.6
-("Life cycle impact assessment") both require a documented audit
+ISO 14067:2018 (*Carbon footprint of products*) inherits its life cycle
+inventory machinery from ISO 14040:2006 (§4.5 — life cycle inventory
+analysis) and ISO 14044:2006 (§4.2 / §4.3 — data quality, and §4.5.3 —
+inventory data requirements). All three demand a documented audit
 trail: every value used in the assessment must be traceable to its
 source, its version, the parameters that produced it, and — where
 randomness is involved — to a seed that lets a critical reviewer
-reproduce the result byte-for-byte. ISO 14044:2006 §4.5.3 makes the
-same requirement explicit for *inventory data* (which is what most of
-pedotri's soil-derived outputs would feed into a downstream LCA).
+reproduce the result byte-for-byte. Pedotri's soil-derived outputs
+typically feed the agricultural / land-use portion of a product CF
+(14067 §6.4.5 — soil carbon stock change, §6.4.9 — land use change),
+so the audit machinery here is the contract that makes those numbers
+defensible to a 14067 reviewer.
 
 This module gives pedotri a small machinery for that:
 
@@ -26,13 +30,17 @@ This module gives pedotri a small machinery for that:
   When populated, the chain of ``.provenance.upstream`` references
   encodes the full LCI graph back to the original data fetches.
 
-What pedotri *does not* claim: that a JSON export of an audit trail is
-itself an ISO 14040 LCI report. That report needs the goal-and-scope
-section, allocation choices, system boundaries, and impact-assessment
-methodology, which are out of scope for a soil-texture library. What
-the trail does is satisfy the ISO 14040 data-traceability and
-reproducibility requirements within the soil-data step of a larger
-LCA pipeline.
+What pedotri *does not* claim: that a JSON export of an audit trail
+is itself an ISO 14067 product CF report. That report needs a
+goal-and-scope section, a functional unit and reference flow, GWP
+characterization, allocation procedures, and time-bounded stock-change
+accounting (e.g. ΔSOC over an inventory period). Those live in the
+downstream LCA / carbon-accounting tool that consumes pedotri's
+outputs; the ``Provenance.upstream`` chain is the handoff socket the
+downstream tool extends. What the trail does is satisfy the data
+traceability and reproducibility requirements (14044 §4.5.3 / §4.4.5,
+inherited by 14067) within the soil-data step of a larger product-CF
+pipeline.
 """
 
 from __future__ import annotations
@@ -123,7 +131,7 @@ class DataSource:
 
 @dataclass(frozen=True, slots=True)
 class Provenance:
-    """ISO 14040-style record of one computational step.
+    """ISO 14067-style record of one computational step.
 
     Pedotri populates one of these per result dataclass. The chain
     formed by walking ``.upstream`` recursively is the LCI audit

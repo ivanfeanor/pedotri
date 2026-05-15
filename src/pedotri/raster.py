@@ -94,14 +94,12 @@ def classify_array(
             Pass ``float("inf")`` to disable the check.
 
     Returns:
-        ``(codes, keys)`` —
-
-        - ``codes``: int16 array, same shape as ``sand``. Each entry is
-          either an index into ``keys`` (matched class) or
-          :data:`NODATA_CODE`.
-        - ``keys``: list of class keys in the order used by the codes;
-          ``keys[codes[i, j]]`` is the class key for pixel ``(i, j)``
-          when ``codes[i, j] != NODATA_CODE``.
+        A ``(codes, keys)`` tuple. ``codes`` is an int16 array of the
+        same shape as ``sand``: each entry is either an index into
+        ``keys`` (matched class) or :data:`NODATA_CODE`. ``keys`` is
+        the list of class keys in the order used by the codes — so
+        ``keys[codes[i, j]]`` is the class key for pixel ``(i, j)``
+        when ``codes[i, j] != NODATA_CODE``.
 
     Raises:
         InvalidInputError: For shape mismatches or unknown units.
@@ -449,10 +447,11 @@ def render_classified_png(
         title: Optional figure title.
         extent: ``(left, right, bottom, top)`` in the data CRS, used
             for axis ticks. If ``None``, axes show pixel coordinates.
-        xlabel, ylabel: Axis labels. Default to ``"longitude"`` /
-            ``"latitude"`` for WGS 84 / EPSG:4326 maps. Set to e.g.
-            ``"easting (m)" / "northing (m)"`` for projected CRSs,
-            or ``None`` to omit the label entirely.
+        xlabel: X-axis label. Defaults to ``"longitude"`` for WGS 84
+            maps; set to e.g. ``"easting (m)"`` for a projected CRS,
+            or ``None`` to omit.
+        ylabel: Y-axis label. Defaults to ``"latitude"``; same
+            convention as ``xlabel``.
         figsize: matplotlib figure size in inches.
         dpi: Output DPI; 150 is good for ~1500-px web images, 300 for
             print.

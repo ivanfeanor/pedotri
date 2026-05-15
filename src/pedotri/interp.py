@@ -85,7 +85,8 @@ def krige_samples(
     """Ordinary-krige a single property on a regular grid.
 
     Args:
-        xs, ys: Sample coordinates. Length-N each.
+        xs: X coordinates of the N samples (1-D).
+        ys: Y coordinates of the N samples (1-D, same length as ``xs``).
         values: Property values at each sample. Length-N, same order
             as ``xs`` / ``ys``.
         bbox: Output extent ``(x_min, y_min, x_max, y_max)``. Should
@@ -104,19 +105,16 @@ def krige_samples(
             lower for very small N.
 
     Returns:
-        ``(grid, variance, profile)``:
-
-        - ``grid`` — kriging prediction, shape ``(rows, cols)``,
-          ``float64``.
-        - ``variance`` — kriging variance at each cell, same shape.
-          Larger means lower confidence.
-        - ``profile`` — rasterio-style profile dict (``transform``,
-          ``crs=None``, ``width``, ``height``, ``dtype="float64"``,
-          ``count=1``) suitable to feed
-          :func:`pedotri.raster.write_classified_geotiff` after the
-          grid is classified. ``crs`` is left as ``None`` because the
-          interpolator doesn't know what CRS the coordinates are in —
-          set it on the returned profile before writing if you care.
+        A ``(grid, variance, profile)`` tuple. ``grid`` is the kriging
+        prediction with shape ``(rows, cols)`` and dtype ``float64``.
+        ``variance`` is the kriging variance at each cell (same shape;
+        larger means lower confidence). ``profile`` is a rasterio-style
+        profile dict (``transform``, ``crs=None``, ``width``,
+        ``height``, ``dtype="float64"``, ``count=1``) suitable to feed
+        :func:`pedotri.raster.write_classified_geotiff` after the grid
+        is classified. ``crs`` is left as ``None`` because the
+        interpolator doesn't know what CRS the coordinates are in —
+        set it on the returned profile before writing if you care.
 
     Raises:
         ImportError: If pykrige is not installed
@@ -202,16 +200,16 @@ def krige_sand_clay(
     suitable for :func:`pedotri.raster.classify_array`.
 
     Args:
-        samples: Either:
-
-            - A list of dicts ``[{"x": ..., "y": ..., "sand": ...,
-              "clay": ...}, ...]`` (key names must be ``x``, ``y``,
-              ``sand``, ``clay``).
-            - A 2-D numpy array of shape ``(N, 4)`` with columns
-              ``(x, y, sand, clay)``.
-
-        bbox, resolution, variogram, n_lags: Same as
+        samples: Either a list of dicts
+            ``[{"x": ..., "y": ..., "sand": ..., "clay": ...}, ...]``
+            (key names must be ``x``, ``y``, ``sand``, ``clay``), or
+            a 2-D numpy array of shape ``(N, 4)`` with columns
+            ``(x, y, sand, clay)``.
+        bbox: Output extent ``(x_min, y_min, x_max, y_max)``, same as
             :func:`krige_samples`.
+        resolution: Output cell size, same as :func:`krige_samples`.
+        variogram: Variogram model name, same as :func:`krige_samples`.
+        n_lags: Number of lag bins, same as :func:`krige_samples`.
         mask_polygon: Optional shapely Polygon / MultiPolygon
             defining the field boundary. Cells whose centers fall
             outside the polygon are set to ``nan`` in both output

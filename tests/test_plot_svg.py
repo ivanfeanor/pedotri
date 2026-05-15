@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 import pedotri
+from pedotri.errors import PedotriError
 from pedotri.plot import TextureDiagram, render_svg
 
 if TYPE_CHECKING:
@@ -108,3 +109,8 @@ def test_render_show_legend_false_omits_legend() -> None:
 def test_render_unknown_classification_raises() -> None:
     with pytest.raises(pedotri.UnknownClassificationError):
         render_svg("NOT_A_REAL_KEY")
+
+
+def test_render_rejects_2d_point_with_wrong_arity() -> None:
+    with pytest.raises(PedotriError, match="2-D diagram"):
+        render_svg("USDA", points=[(40, 25, 35)])

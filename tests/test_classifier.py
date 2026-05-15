@@ -107,6 +107,20 @@ def test_classify_with_explicit_classification_object() -> None:
     assert pedotri.classify(13, 50, c) == "clay"
 
 
+def test_classify_rejects_wrong_classification_type() -> None:
+    with pytest.raises(TypeError, match="must be a str or Classification"):
+        pedotri.classify(13, 50, 42)  # type: ignore[arg-type]
+
+
+def test_unknown_classification_error_without_available_list() -> None:
+    """Direct instantiation without an ``available`` list is supported and
+    omits the 'Available: ...' suffix from the message."""
+    err = UnknownClassificationError("NOPE")
+    assert err.key == "NOPE"
+    assert err.available == []
+    assert "Available" not in str(err)
+
+
 def test_canonical_usda_reference_points() -> None:
     """Spot-check well-known points against the USDA triangle.
 

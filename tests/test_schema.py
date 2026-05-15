@@ -30,6 +30,18 @@ def test_texture_class_resolves_locale_with_fallback() -> None:
     assert cls.name("zh") == "clay"
 
 
+def test_texture_class_is_polygon_flag() -> None:
+    poly = TextureClass(key="a", vertices=make_vertices([(0, 0), (1, 0), (0, 1)]))
+    interval = TextureClass(key="b", interval=(0.0, 10.0))
+    assert poly.is_polygon is True
+    assert interval.is_polygon is False
+
+
+def test_resolve_locale_iterates_multi_subtag_chain() -> None:
+    # fr-CA-region → fr-CA (miss) → fr (hit). Exercises the loop-back branch.
+    assert _resolve_locale({"fr": "argile"}, "fr-CA-region", fallback="X") == "argile"
+
+
 def test_texture_class_falls_back_to_key_when_no_names() -> None:
     cls = TextureClass(
         key="sandy_loam",
@@ -192,3 +204,83 @@ def test_make_vertices_promotes_to_float64() -> None:
     v = make_vertices([(0, 100), (50, 50), (100, 0)])
     assert v.dtype == np.float64
     assert v.shape == (3, 2)
+
+
+def test_make_vertices_rejects_wrong_shape() -> None:
+    with pytest.raises(ClassificationError, match="N, 2"):
+        make_vertices([(0, 0, 0), (1, 1, 1), (2, 2, 2)])
+
+
+# --- TextureClass / Classification validation error paths ----------------
+
+
+def test_texture_class_rejects_both_vertices_and_interval() -> None:
+    with pytest.raises(ClassificationError, match="exactly one"):
+        TextureClass(
+            key="x",
+            vertices=make_vertices([(0, 0), (1, 0), (0, 1)]),
+            interval=(0.0, 10.0),
+        )
+
+
+def test_texture_class_rejects_neither_vertices_nor_interval() -> None:
+    with pytest.raises(ClassificationError, match="exactly one"):
+        TextureClass(key="x")
+
+
+def test_classification_class_by_key_raises_for_missing_key() -> None:
+    c = Classification(key="X", axes=("sand", "clay"), classes=(_ok_class(),))
+    with pytest.raises(KeyError, match="No class"):
+        c.class_by_key("missing")
+
+
+def test_classification_rejects_empty_key() -> None:
+    with pytest.raises(ClassificationError, match="non-empty"):
+        Classification(key="", axes=("sand", "clay"), classes=(_ok_class(),))
+
+
+def test_classification_rejects_zero_or_three_axes() -> None:
+    with pytest.raises(ClassificationError, match="length 1"):
+        Classification(key="X", axes=(), classes=(_ok_class(),))
+    with pytest.raises(ClassificationError, match="length 1"):
+        Classification(key="X", axes=("sand", "clay", "silt"), classes=(_ok_class(),))
+
+
+def test_classification_rejects_empty_class_key() -> None:
+    bad = TextureClass(key="", vertices=make_vertices([(0, 0), (1, 0), (0, 1)]))
+    with pytest.raises(ClassificationError, match="Empty class key"):
+        Classification(key="X", axes=("sand", "clay"), classes=(bad,))
+
+
+def test_classification_polygon_class_must_have_vertices() -> None:
+    interval_class = TextureClass(key="a", interval=(0.0, 10.0))
+    with pytest.raises(ClassificationError, match="'vertices' is required"):
+        Classification(key="X", axes=("sand", "clay"), classes=(interval_class,))
+
+
+def test_classification_polygon_class_rejects_too_few_vertices() -> None:
+    # make_vertices accepts 2 rows; the polygon validator rejects.
+    two_vertex = TextureClass(key="a", vertices=make_vertices([(0, 0), (1, 0)]))
+    with pytest.raises(ClassificationError, match="at least 3 vertices"):
+        Classification(key="X", axes=("sand", "clay"), classes=(two_vertex,))
+
+
+def test_classification_polygon_class_rejects_wrong_vertex_shape() -> None:
+    # 1-D array slips past TextureClass.__post_init__ (which only checks
+    # vertices/interval are mutually exclusive) and is caught by the
+    # Classification-level shape validator.
+    cls = TextureClass(key="a", vertices=np.zeros((4,), dtype=np.float64))
+    with pytest.raises(ClassificationError, match=r"shape \(N, 2\)"):
+        Classification(key="X", axes=("sand", "clay"), classes=(cls,))
+
+
+def test_classification_interval_class_must_have_interval() -> None:
+    poly = TextureClass(key="a", vertices=make_vertices([(0, 0), (1, 0), (0, 1)]))
+    with pytest.raises(ClassificationError, match="'interval' is required"):
+        Classification(key="X", axes=("physical_clay",), classes=(poly,))
+
+
+def test_classification_interval_class_rejects_empty_interval() -> None:
+    cls = TextureClass(key="a", interval=(10.0, 5.0))
+    with pytest.raises(ClassificationError, match="empty"):
+        Classification(key="X", axes=("physical_clay",), classes=(cls,))

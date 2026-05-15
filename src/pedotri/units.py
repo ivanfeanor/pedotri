@@ -146,10 +146,9 @@ def _convert_inputs(value: ScalarOrArrayLike, units: str) -> ScalarOrArrayLike:
 
     Used internally by classify / PTFs / psd.convert to apply ``units=``
     at the function boundary before existing percentage-based logic
-    runs. Returns the original input unchanged when ``units == "%"``.
+    runs. Callers always guard with ``if units != "%":``, so this
+    function never sees ``"%"`` in practice.
     """
-    if units == "%":
-        return value
     factor = _factor_to_percent(units)
     if isinstance(value, (int, float)):
         return float(value) * factor

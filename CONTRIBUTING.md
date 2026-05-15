@@ -20,9 +20,22 @@ pedotri uses [uv](https://docs.astral.sh/uv/) for environment management.
 git clone https://github.com/ivanfeanor/pedotri
 cd pedotri
 uv sync --all-extras --group dev
+uv run pre-commit install     # one-time: enables git hooks
 ```
 
-That gives you a `.venv` with pedotri, every optional extra (matplotlib, plotly, pandas, polars, mcp), and all dev tools (pytest, ruff, mypy, hypothesis, mkdocs).
+That gives you a `.venv` with pedotri, every optional extra (matplotlib, plotly, pandas, polars, mcp), and all dev tools (pytest, ruff, mypy, hypothesis, mkdocs, pre-commit).
+
+### Pre-commit hooks
+
+The repo ships a `.pre-commit-config.yaml` that runs the same lint and format checks CI uses (plus a few hygiene hooks for trailing whitespace, line endings, and TOML / YAML syntax) on every `git commit`. After running `pre-commit install` once, hooks run automatically.
+
+To run all hooks manually against the entire tree:
+
+```bash
+uv run pre-commit run --all-files
+```
+
+If a hook auto-fixes a file (ruff format / end-of-file / trailing whitespace), it leaves the changes unstaged and aborts the commit so you can review and re-stage.
 
 ## Quality gates
 

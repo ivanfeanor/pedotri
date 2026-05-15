@@ -1,0 +1,40 @@
+# Pre-commit hooks for pedotri.
+#
+# Install once after cloning:
+#
+#     uv run pre-commit install
+#
+# Hooks then run automatically on every `git commit`. To run them
+# manually against every file in the repo:
+#
+#     uv run pre-commit run --all-files
+#
+# The ruff version below is pinned to match the version in the [dev]
+# dependency group of pyproject.toml. Bump both together.
+
+default_language_version:
+  python: python3.11
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        # Markdown uses trailing double-spaces for line breaks.
+        exclude: \.md$
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-toml
+      - id: check-added-large-files
+        args: [--maxkb=500]
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

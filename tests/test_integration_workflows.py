@@ -12,6 +12,8 @@ WorldCover-shaped data inline.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -26,7 +28,7 @@ WORLDCOVER_TREE = 10
 
 def _synthetic_layer(
     mean: float, halfwidth: float, *, shape: tuple[int, int] = (H, W), seed: int = 0
-) -> dict[str, np.ndarray]:
+) -> dict[str, Any]:
     """Return a per-depth spec ready to pass to aggregate_depths()."""
     rng = np.random.default_rng(seed)
     m = np.full(shape, mean, dtype=np.float64) + rng.normal(scale=0.25, size=shape)

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -10,9 +12,7 @@ from pedotri.uncertainty import Quantiles
 from pedotri.zonal import AggregateDistribution, zonal_aggregate
 
 
-def _uniform_property(
-    shape: tuple[int, int], mean: float, halfwidth: float
-) -> dict[str, np.ndarray]:
+def _uniform_property(shape: tuple[int, int], mean: float, halfwidth: float) -> dict[str, Any]:
     """A uniform-raster property spec in the dict form preferred by 0.3.x."""
     m = np.full(shape, mean, dtype=np.float64)
     return {"mean": m, "uncertainty": Quantiles(m - halfwidth, m + halfwidth)}
@@ -161,7 +161,7 @@ def test_combine_with_var_kwargs_receives_everything() -> None:
 
     def stock_fn(**props: np.ndarray) -> np.ndarray:
         received.extend(sorted(props.keys()))
-        return props["soc"] * props["bd"]
+        return np.asarray(props["soc"] * props["bd"])
 
     agg.combine(stock_fn)
     assert received == ["bd", "soc"]

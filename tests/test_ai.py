@@ -5,12 +5,16 @@ from __future__ import annotations
 import base64
 import json
 import math
+from typing import TYPE_CHECKING, Any
 
 import pytest
 
 import pedotri
 from pedotri import ai
 from pedotri.ptf import saxton_rawls, wosten
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def test_tool_schemas_complete() -> None:
@@ -299,10 +303,10 @@ def test_classify_point_rejects_partial_quantiles() -> None:
     assert "sand_q05" in err["message"]
 
 
-def test_classify_point_from_soilgrids_with_mock(monkeypatch: pytest.MonkeyPatch, tmp_path) -> None:
+def test_classify_point_from_soilgrids_with_mock(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
     """Stub SoilGrids HTTP and verify the lon/lat mode pipes through to classify()."""
-
-    from pedotri.sources import soilgrids
 
     canned = {
         "properties": {
@@ -332,16 +336,16 @@ def test_classify_point_from_soilgrids_with_mock(monkeypatch: pytest.MonkeyPatch
     class _Resp:
         status = 200
 
-        def __enter__(self):
+        def __enter__(self) -> _Resp:
             return self
 
-        def __exit__(self, *args):
+        def __exit__(self, *args: Any) -> None:
             pass
 
-        def read(self):
+        def read(self) -> bytes:
             return json.dumps(canned).encode("utf-8")
 
-    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", lambda req, timeout=30.0: _Resp())
+    monkeypatch.setattr("urllib.request.urlopen", lambda req, timeout=30.0: _Resp())
     # Redirect cache into tmp_path so a real cache dir isn't polluted.
     monkeypatch.setenv("XDG_CACHE_HOME", str(tmp_path))
 

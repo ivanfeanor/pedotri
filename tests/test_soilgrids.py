@@ -79,11 +79,11 @@ def fake_urlopen(monkeypatch: pytest.MonkeyPatch) -> list[str]:
     """Replace ``urlopen`` with a recorder + canned response."""
     calls: list[str] = []
 
-    def _urlopen(req, timeout: float = 30.0) -> _FakeResponse:
+    def _urlopen(req: Any, timeout: float = 30.0) -> _FakeResponse:
         calls.append(req.full_url if hasattr(req, "full_url") else str(req))
         return _FakeResponse(SAND_CLAY_RESPONSE)
 
-    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", _urlopen)
+    monkeypatch.setattr("urllib.request.urlopen", _urlopen)
     return calls
 
 
@@ -177,12 +177,12 @@ def test_fetch_point_rejects_unknown_depth(cache_dir: Path, fake_urlopen: list[s
 def test_fetch_point_raises_on_http_failure(
     cache_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def _failing(*args: Any, **kwargs: Any):
+    def _failing(*args: Any, **kwargs: Any) -> Any:
         import urllib.error
 
         raise urllib.error.URLError("nope")
 
-    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", _failing)
+    monkeypatch.setattr("urllib.request.urlopen", _failing)
     with pytest.raises(PedotriError, match="SoilGrids request failed"):
         soilgrids.fetch_point(2.5, 47.0, cache_dir=cache_dir)
 
@@ -190,10 +190,10 @@ def test_fetch_point_raises_on_http_failure(
 def test_fetch_point_raises_on_malformed_response(
     cache_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def _bad(req, timeout: float = 30.0):
+    def _bad(req: Any, timeout: float = 30.0) -> _FakeResponse:
         return _FakeResponse({"oops": True})
 
-    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", _bad)
+    monkeypatch.setattr("urllib.request.urlopen", _bad)
     with pytest.raises(PedotriError, match="missing properties.layers"):
         soilgrids.fetch_point(2.5, 47.0, cache_dir=cache_dir)
 
@@ -247,7 +247,7 @@ def test_as_quantiles_returns_pedotri_quantiles(cache_dir: Path, fake_urlopen: l
 def test_sand_clay_helper_complains_when_data_missing(
     cache_dir: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    def _only_sand(req, timeout: float = 30.0):
+    def _only_sand(req: Any, timeout: float = 30.0) -> _FakeResponse:
         body = {
             "properties": {
                 "layers": [
@@ -265,7 +265,7 @@ def test_sand_clay_helper_complains_when_data_missing(
         }
         return _FakeResponse(body)
 
-    monkeypatch.setattr(soilgrids.urllib.request, "urlopen", _only_sand)
+    monkeypatch.setattr("urllib.request.urlopen", _only_sand)
     pt = soilgrids.fetch_point(2.5, 47.0, properties=("sand",), cache_dir=cache_dir)
     with pytest.raises(PedotriError, match="missing"):
         pt.sand_clay()

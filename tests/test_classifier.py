@@ -109,7 +109,7 @@ def test_classify_with_explicit_classification_object() -> None:
 
 def test_classify_rejects_wrong_classification_type() -> None:
     with pytest.raises(TypeError, match="must be a str or Classification"):
-        pedotri.classify(13, 50, 42)  # type: ignore[call-overload]
+        pedotri.classify(13, 50, 42)
 
 
 def test_unknown_classification_error_without_available_list() -> None:

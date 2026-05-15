@@ -335,9 +335,10 @@ def _load_cached(path: Path, ttl_days: float) -> dict[str, Any] | None:
         if age_seconds > ttl_days * 86400.0:
             return None
     try:
-        return json.loads(path.read_text())
+        loaded: dict[str, Any] = json.loads(path.read_text())
     except (OSError, json.JSONDecodeError):
         return None
+    return loaded
 
 
 def _save_cached(path: Path, raw: dict[str, Any]) -> None:
@@ -365,9 +366,10 @@ def _http_get(payload: dict[str, Any], *, timeout: float) -> dict[str, Any]:
     except urllib.error.URLError as exc:
         raise PedotriError(f"SoilGrids request failed: {exc}") from exc
     try:
-        return json.loads(body)
+        parsed: dict[str, Any] = json.loads(body)
     except json.JSONDecodeError as exc:
         raise PedotriError(f"SoilGrids returned non-JSON payload from {url}: {exc}") from exc
+    return parsed
 
 
 def _parse_response(

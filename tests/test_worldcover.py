@@ -11,6 +11,7 @@ from pedotri.errors import InvalidInputError
 from pedotri.sources import worldcover
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from pathlib import Path
 
 # --- tile arithmetic ----------------------------------------------------
@@ -103,7 +104,9 @@ class _SyntheticTile:
         self.fill = fill
 
 
-def _fake_read_tile_window(synthetic_tiles: dict[str, _SyntheticTile]):
+def _fake_read_tile_window(
+    synthetic_tiles: dict[str, _SyntheticTile],
+) -> Callable[..., tuple[np.ndarray, tuple[float, float, float, float]] | None]:
     """Build a stub for ``worldcover._read_tile_window``."""
 
     def reader(
@@ -112,7 +115,7 @@ def _fake_read_tile_window(synthetic_tiles: dict[str, _SyntheticTile]):
         bbox: tuple[float, float, float, float],
         rasterio: Any,
         window_from_bounds: Any,
-    ):
+    ) -> tuple[np.ndarray, tuple[float, float, float, float]] | None:
         # The URL ends in '_<TILE>.tif'; recover the tile id from it.
         stem = url.rsplit(".", 1)[0]
         tile = stem.rsplit("_", 1)[-1]
@@ -180,7 +183,7 @@ def test_fetch_aoi_caches_result(monkeypatch: pytest.MonkeyPatch, tmp_path: Path
     fake_tiles = {"N45E003": _SyntheticTile(3, 45, fill=worldcover.CROPLAND)}
     base = _fake_read_tile_window(fake_tiles)
 
-    def counted_reader(url, **kwargs):
+    def counted_reader(url: str, **kwargs: Any) -> Any:
         calls.append(url)
         return base(url, **kwargs)
 

@@ -53,6 +53,7 @@ def test_parse_uncertainty_bare_tuple_deprecated() -> None:
 
 def test_parse_uncertainty_scalar_form() -> None:
     sigma = _parse_uncertainty(3.0)
+    assert sigma is not None
     assert float(sigma) == 3.0
 
 

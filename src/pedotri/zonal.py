@@ -42,7 +42,7 @@ from pedotri.errors import InvalidInputError
 from pedotri.uncertainty import Quantiles, sigma_from_quantiles
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, KeysView, Mapping
 
 _AGG_WORK_WARN: int = 100_000_000
 _AGG_WORK_BLOCK: int = 1_000_000_000
@@ -123,7 +123,7 @@ class ZonalAggregate:
     def __contains__(self, key: object) -> bool:
         return key in self.properties
 
-    def keys(self):
+    def keys(self) -> KeysView[str]:
         return self.properties.keys()
 
     def combine(
@@ -368,7 +368,7 @@ def _load_property_stack(
 def _spec_to_mean_sigma(
     name: str,
     spec: Any,
-    to_array: Any,
+    to_array: Callable[[str, str, Any], np.ndarray],
 ) -> tuple[np.ndarray, np.ndarray]:
     """Dispatch on the four supported spec shapes."""
     if isinstance(spec, dict):
@@ -424,7 +424,7 @@ def _resolve_property_uncertainty(
     name: str,
     value: Any,
     target_shape: tuple[int, ...],
-    to_array: Any,
+    to_array: Callable[[str, str, Any], np.ndarray],
 ) -> np.ndarray:
     """Translate a property's ``uncertainty`` spec into a σ array."""
     if isinstance(value, Quantiles):
@@ -514,7 +514,7 @@ def _rasterize_geometry(
         dtype="uint8",
         all_touched=False,
     )
-    return mask.astype(bool)
+    return np.asarray(mask.astype(bool))
 
 
 def _resolve_mask_raster(
@@ -593,12 +593,12 @@ def _aggregate_property(
         size=(n_pixels, n_samples),
     )
     np.maximum(samples, 0.0, out=samples)
-    return samples.mean(axis=0)
+    return np.asarray(samples.mean(axis=0), dtype=np.float64)
 
 
 def aggregate_depths(
     samples: dict[str, Any],
-    weights: dict[str, float],
+    weights: Mapping[str, float],
 ) -> tuple[Any, Any]:
     """Depth-weighted aggregation of per-depth (mean, Q05, Q95) bands.
 

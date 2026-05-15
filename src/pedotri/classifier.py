@@ -202,6 +202,20 @@ def classify(
 ) -> Any: ...
 
 
+@overload
+def classify(
+    *args: Any,
+    classification: str | Classification | None = ...,
+    locale: Locale | None = ...,
+    detailed: bool = ...,
+    units: str = ...,
+    method: str = ...,
+    n_samples: int = ...,
+    seed: Any = ...,
+    **kwargs: Any,
+) -> Any: ...
+
+
 def classify(
     *args: Any,
     **kwargs: Any,

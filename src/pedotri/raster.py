@@ -135,7 +135,7 @@ class RasterClassification:
             modal = self.top_k_probs[0].astype(np.float32, copy=True)
             # Where no class had any probability mass, surface that as NaN.
             modal[modal == 0] = np.nan
-            return modal
+            return np.asarray(modal)
         raise InvalidInputError(
             "RasterClassification has no confidence data; the active method "
             f"({self.method!r}) populated neither .confidence nor .top_k_probs."
@@ -1131,7 +1131,7 @@ def _read_uncertainty_paths(
     def _read(path: Path | str) -> np.ndarray:
         with rio.open(path) as src_q, rio.open(reference_path) as src_ref:
             _check_rasters_aligned(src_q, src_ref)
-            return src_q.read(1).astype(np.float64)
+            return np.asarray(src_q.read(1).astype(np.float64))
 
     # (q05_path, q95_path) — common SoilGrids shape.
     if (
@@ -1286,7 +1286,7 @@ def _entropy_from_probs(probs: np.ndarray) -> np.ndarray:
     p = probs.astype(np.float64, copy=False)
     with np.errstate(divide="ignore", invalid="ignore"):
         terms = np.where(p > 0, p * np.log(p), 0.0)
-    return (-terms.sum(axis=-1)).astype(np.float32)
+    return np.asarray((-terms.sum(axis=-1)).astype(np.float32))
 
 
 def _erf_vec(x: np.ndarray) -> np.ndarray:

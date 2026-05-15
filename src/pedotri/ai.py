@@ -29,7 +29,7 @@ from __future__ import annotations
 
 import base64 as _base64
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pedotri
 from pedotri.errors import (
@@ -572,7 +572,7 @@ def _h_classify_soil(args: dict[str, Any]) -> dict[str, Any]:
         locale=locale,
         units=units,
     )
-    return result.to_dict()
+    return cast("dict[str, Any]", result.to_dict())
 
 
 def _h_classify_point(args: dict[str, Any]) -> dict[str, Any]:
@@ -625,7 +625,7 @@ def _h_classify_point(args: dict[str, Any]) -> dict[str, Any]:
             n_samples=n_samples,
             seed=seed,
         )
-        out = result.to_dict()
+        out = cast("dict[str, Any]", result.to_dict())
         out["source"] = {
             "name": "soilgrids",
             "lon": point.lon,
@@ -677,7 +677,7 @@ def _h_classify_point(args: dict[str, Any]) -> dict[str, Any]:
             detailed=True,
             locale=locale,
         )
-    return result.to_dict()
+    return cast("dict[str, Any]", result.to_dict())
 
 
 def _h_classify_soil_1d(args: dict[str, Any]) -> dict[str, Any]:
@@ -688,7 +688,7 @@ def _h_classify_soil_1d(args: dict[str, Any]) -> dict[str, Any]:
     result = pedotri.classify(
         float(value), classification, detailed=True, locale=locale, units=units
     )
-    return result.to_dict()
+    return cast("dict[str, Any]", result.to_dict())
 
 
 def _h_list_classifications(args: dict[str, Any]) -> dict[str, Any]:

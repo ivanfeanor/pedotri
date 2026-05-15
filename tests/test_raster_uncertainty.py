@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import pytest
@@ -256,6 +256,8 @@ def test_sigma_input_form_equivalent_to_quantile_form() -> None:
         method="distance",
     )
     np.testing.assert_array_equal(r_q.codes, r_s.codes)
+    assert r_q.confidence is not None
+    assert r_s.confidence is not None
     np.testing.assert_allclose(r_q.confidence, r_s.confidence, rtol=1e-6)
 
 
@@ -317,6 +319,7 @@ def test_mask_excludes_pixels() -> None:
         mask=mask,
     )
     assert r.codes[0, 0] == NODATA_CODE
+    assert r.confidence is not None
     assert np.isnan(r.confidence[0, 0])
 
 
@@ -335,7 +338,7 @@ def test_unknown_method_rejected() -> None:
 # --- GeoTIFF round-trip --------------------------------------------------
 
 
-def _make_profile(shape: tuple[int, int]) -> dict:
+def _make_profile(shape: tuple[int, int]) -> dict[str, Any]:
     from rasterio.transform import from_origin
 
     return {
@@ -360,6 +363,7 @@ def test_write_confidence_geotiff_round_trip(tmp_path: Path) -> None:
         classification="USDA",
         method="distance",
     )
+    assert r.confidence is not None
     profile = _make_profile(sand.shape)
     out = tmp_path / "confidence.tif"
     write_confidence_geotiff(out, r.confidence, profile=profile, method="distance")
@@ -388,6 +392,8 @@ def test_write_probability_stack_round_trip(tmp_path: Path) -> None:
         seed=7,
         top_k=5,
     )
+    assert r.top_k_codes is not None
+    assert r.top_k_probs is not None
     profile = _make_profile(sand.shape)
     out = tmp_path / "probs.tif"
     write_probability_stack_geotiff(out, r.top_k_codes, r.top_k_probs, profile=profile, keys=r.keys)

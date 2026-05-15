@@ -41,3 +41,17 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
+
+  # Mypy strict — matches the CI gate. Runs as a local hook through
+  # ``uv run`` so the same project deps + plugins are visible
+  # (numpy + rasterio + pytest stubs etc.). Scope is the package
+  # source plus the tests; mypy is configured in pyproject.toml.
+  - repo: local
+    hooks:
+      - id: mypy
+        name: mypy (strict)
+        entry: uv run mypy
+        language: system
+        types_or: [python, pyi]
+        pass_filenames: false
+        require_serial: true

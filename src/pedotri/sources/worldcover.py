@@ -31,9 +31,12 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
 
 from pedotri.errors import InvalidInputError, PedotriError
 
@@ -287,7 +290,7 @@ def _bounds_from_geo_interface(gi: dict[str, Any]) -> tuple[float, float, float,
     if coords is None:
         raise InvalidInputError(f"GeoJSON object has no coordinates: {gi!r}")
 
-    def _iter_xy(seq: Any):
+    def _iter_xy(seq: Any) -> Iterator[tuple[float, float]]:
         if isinstance(seq, (list, tuple)) and seq and isinstance(seq[0], (int, float)):
             yield float(seq[0]), float(seq[1])
             return
@@ -311,7 +314,7 @@ def _cache_root(cache_dir: Path | str | None) -> Path:
     return Path(base) / "pedotri" / "worldcover"
 
 
-def _cache_path(key: tuple, cache_dir: Path | str | None) -> Path:
+def _cache_path(key: tuple[Any, ...], cache_dir: Path | str | None) -> Path:
     digest = hashlib.sha256(
         json.dumps(key, sort_keys=True, default=list).encode("utf-8")
     ).hexdigest()

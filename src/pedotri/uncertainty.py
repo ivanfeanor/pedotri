@@ -336,7 +336,7 @@ def shannon_entropy(probs: FloatArray) -> FloatArray:
     p = np.asarray(probs, dtype=np.float64)
     with np.errstate(divide="ignore", invalid="ignore"):
         terms = np.where(p > 0, p * np.log(p), 0.0)
-    return -terms.sum(axis=-1)
+    return np.asarray(-terms.sum(axis=-1), dtype=np.float64)
 
 
 def _norm_cdf(x: float) -> float:
@@ -417,7 +417,7 @@ def _erf_array(x: np.ndarray) -> np.ndarray:
     y = 1.0 - (((((_AS_A5 * t + _AS_A4) * t) + _AS_A3) * t + _AS_A2) * t + _AS_A1) * t * np.exp(
         -ax * ax
     )
-    return sign * y
+    return np.asarray(sign * y, dtype=np.float64)
 
 
 def _norm_cdf_array(x: np.ndarray) -> np.ndarray:

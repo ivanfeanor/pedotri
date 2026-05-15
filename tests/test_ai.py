@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import math
 
@@ -153,11 +154,32 @@ def test_convert_particle_size() -> None:
     assert result["clay"] == 10.0
 
 
-def test_render_diagram_returns_svg() -> None:
+def test_render_diagram_defaults_to_png() -> None:
+    """When matplotlib is available (it is in the dev environment),
+    render_diagram returns PNG by default — the format every MCP client
+    can render inline reliably."""
     result = ai.run("render_diagram", {"classification": "USDA"})
+    assert result["format"] == "png"
+    assert result["encoding"] == "base64"
+    # PNG signature is 89 50 4E 47 0D 0A 1A 0A.
+    decoded = base64.standard_b64decode(result["content"])
+    assert decoded[:8] == b"\x89PNG\r\n\x1a\n"
+
+
+def test_render_diagram_returns_svg_when_requested() -> None:
+    """Callers (or MCP clients that handle vector content) can opt
+    into SVG explicitly via the format keyword."""
+    result = ai.run("render_diagram", {"classification": "USDA", "format": "svg"})
     assert result["format"] == "svg"
+    assert result["encoding"] == "text"
     assert result["content"].startswith("<svg")
     assert result["content"].rstrip().endswith("</svg>")
+
+
+def test_render_diagram_unknown_format_rejected() -> None:
+    result = ai.run("render_diagram", {"classification": "USDA", "format": "jpeg"})
+    assert result["error"] == "InvalidInputError"
+    assert "format" in result["message"]
 
 
 # --- Error envelopes -----------------------------------------------------

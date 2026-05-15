@@ -101,6 +101,70 @@ def render_mpl(
     raise PedotriError(f"Cannot render classification with {len(c.axes)} axes.")
 
 
+def render_png(
+    classification: str | Classification,
+    *,
+    points: Sequence[Sequence[float]] | None = None,
+    point_labels: Sequence[str] | None = None,
+    locale: str | None = None,
+    title: str | None = None,
+    show_legend: bool = True,
+    show_grid: bool = True,
+    figsize: tuple[float, float] = (8, 7),
+    dpi: int = 200,
+) -> bytes:
+    """Render a texture diagram to PNG bytes.
+
+    Thin wrapper over :func:`render_mpl` that saves to PNG via
+    matplotlib. The default 200 dpi yields ~1600 x 1400 px from the
+    default 8 x 7" figure — crisp on retina displays at typical
+    chat-embed widths, and the PNG stays comfortably small
+    (~200 KB).
+
+    Args:
+        classification: Classification key or instance.
+        points / point_labels / locale / title / show_legend /
+            show_grid / figsize: forwarded to :func:`render_mpl`.
+        dpi: Output resolution. 200 is a good "retina-ready" default
+            for chat embeds; bump to 300+ for print-quality.
+
+    Returns:
+        Raw PNG bytes ready to write to a file or base64-encode.
+
+    Raises:
+        ModuleNotFoundError: If matplotlib is not installed.
+    """
+    import io
+
+    try:
+        import matplotlib
+        import matplotlib.pyplot as plt
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "render_png() requires matplotlib. Install with `pip install pedotri[matplotlib]`."
+        ) from exc
+
+    # Headless backend so it works in any process (MCP server, CI, ...).
+    matplotlib.use("Agg", force=True)
+
+    fig = render_mpl(
+        classification,
+        points=points,
+        point_labels=point_labels,
+        locale=locale,
+        title=title,
+        show_legend=show_legend,
+        show_grid=show_grid,
+        figsize=figsize,
+    )
+    buf = io.BytesIO()
+    try:
+        fig.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
+    finally:
+        plt.close(fig)
+    return buf.getvalue()
+
+
 def _triangle_xy(sand: float, clay: float) -> tuple[float, float]:
     """Barycentric (sand %, clay %) → equilateral (x, y) coordinates."""
     s = sand / 100.0

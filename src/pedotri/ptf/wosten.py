@@ -49,7 +49,14 @@ class WostenResult:
         alpha: Van Genuchten alpha (1/cm).
         n: Van Genuchten n (dimensionless, > 1).
         saturated_conductivity: K_s in cm/day.
-        l: Mualem pore-connectivity parameter (dimensionless).
+        l: Mualem pore-connectivity parameter, bounded by Wösten's
+            logistic transform to ``(-10, 10)``. Note that the
+            continuous PTF can yield negative L for many mineral soils;
+            this is reproduced from the published regression and is not
+            a sign error. If you need the strictly-positive Mualem L of
+            typical theoretical interpretation, prefer the FAO-class
+            class-averaged values in Wösten 1999 Table 4 or use a
+            different PTF.
     """
 
     theta_r: float

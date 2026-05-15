@@ -57,6 +57,45 @@ def test_classify_never_raises_in_simplex(key: str, point: tuple[float, float]) 
     assert result is None or isinstance(result, str)
 
 
+# Classifications whose polygons are *designed* to tile the entire
+# sand-silt-clay simplex with no gaps. (Any classification could in
+# principle have intentional gaps; the ones listed here promise
+# complete coverage.)
+_TILING_2D_KEYS = [
+    "USDA",
+    "FAO",
+    "ISSS",
+    "HYPRES",
+    "EMBRAPA",
+    "KA5",
+    "GEPPA",
+    "JAMAGNE",
+    "NORTHCOTE",
+    "PTG",
+    "CHINA",
+    "AVERY",
+]
+
+
+@pytest.mark.parametrize("key", _TILING_2D_KEYS)
+@given(point=_sand_clay())
+@settings(
+    max_examples=200, deadline=None, suppress_health_check=[HealthCheck.function_scoped_fixture]
+)
+def test_tiling_classifications_cover_simplex(
+    key: str, point: tuple[float, float]
+) -> None:
+    """Tiling classifications never return None on any interior point.
+
+    Surfaces accidental coverage gaps introduced by hand-authored polygon
+    sets (KA5's 31-class transcription and Northcote's clay subdivisions
+    were the historically risky additions).
+    """
+    sand, clay = point
+    result = pedotri.classify(sand, clay, key)
+    assert result is not None, f"{key} has a coverage gap at ({sand}, {clay})"
+
+
 @pytest.mark.parametrize("key", _2D_KEYS)
 @given(point=_sand_clay())
 @settings(

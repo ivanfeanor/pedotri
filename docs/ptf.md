@@ -17,6 +17,11 @@ r.available_water           # field_capacity - wilting_point
 r.saturated_conductivity    # K_s (mm/h)
 r.bulk_density              # g/cm³
 r.air_entry_tension         # kPa
+
+# Compaction adjustment per Saxton-Rawls 2006 Eq. 6-7:
+r_compacted = saxton_rawls(40, 20, 2.0, density_factor=1.10)
+r_compacted.bulk_density    # ~10 % denser than `r.bulk_density`
+r_compacted.saturation      # reduced porosity under compaction
 ```
 
 **Reference:** Saxton, K.E. & Rawls, W.J. (2006). *Soil water characteristic estimates by texture and organic matter for hydrologic solutions.* Soil Science Society of America Journal 70(5): 1569–1578.

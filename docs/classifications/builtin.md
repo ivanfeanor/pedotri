@@ -50,6 +50,29 @@ All built-in classifications ship with class names in `en`, `fr`, `de`, `es`, `r
 
 `pedotri.classify(..., locale=None)` always returns the stable class key; pass a locale tag to get the localized name.
 
+## Polygon provenance
+
+Built-in polygons fall into two tiers of fidelity:
+
+**Tier 1 — direct transcription from primary literature.** Polygon vertices come from the original published reference and have been spot-checked against published reference points or against authoritative public implementations:
+
+- `USDA` — Soil Survey Manual, Handbook 18 (1993), Table 3.1
+- `FAO` / `ISSS` — Verheye & Ameryckx (1984), Pedologie
+- `HYPRES` — Wösten et al. (1999), Geoderma 90(3-4)
+- `AVERY` — geometric clone of USDA per Avery 1980 (which adopted USDA boundaries)
+- `EMBRAPA` — simplified 5-class grouping per SiBCS 5ª ed. (2018)
+
+**Tier 2 — interpreted from textbook descriptions.** Boundaries reconstructed from class definitions stated in the cited reference; geometry is plausible but may need refinement once a domain reviewer cross-checks against authoritative reference points:
+
+- `KA5` — full 31-class subdivision derived by converting the published (clay %, silt %) class ranges to (sand %, clay %) polygons
+- `GEPPA` / `JAMAGNE` — French texture triangle boundaries from Jamagne 1967 and Baize & Jamagne 1995; the AA / A split is the documented difference between the historical and modern variants
+- `NORTHCOTE` — Australian factual-key boundaries mapped onto the sand-clay plane (the Factual Key is primarily a field-test protocol, not a lab-data triangle)
+- `PTG` — six-class simplification of the Polish 2008 standard's finer class set
+- `CHINA` — six-class grouping per GB/T 17296-2009
+- `KACHINSKY` — 1-D interval definitions per Качинский (1965) (no geometric ambiguity since intervals are explicit)
+
+The property-based test suite asserts that every Tier 1 and Tier 2 classification *tiles* the full sand-silt-clay simplex with no gaps; coverage holes are caught by `tests/test_properties.py::test_tiling_classifications_cover_simplex`.
+
 ## Hierarchy
 
 Where the underlying reference provides a coarser grouping, the class `group` field exposes it. Typical groups across the built-ins:

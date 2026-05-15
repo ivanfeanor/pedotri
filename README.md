@@ -190,6 +190,9 @@ r.available_water           # FC - WP
 r.saturated_conductivity    # K_s (mm/h)
 r.bulk_density              # g/cm³
 r.air_entry_tension         # psi_e (kPa)
+
+# Compaction-corrected output (Saxton-Rawls 2006 Eq. 6-7)
+r_compacted = saxton_rawls(40, 20, 2.0, density_factor=1.10)
 ```
 
 ### Wösten (1999) — HYPRES Mualem-van Genuchten

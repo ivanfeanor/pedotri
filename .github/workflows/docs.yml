@@ -23,10 +23,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v3
       - name: Build docs
-        # Strict mode is disabled until mkdocstrings/griffe can introspect
-        # overloaded *args/**kwargs signatures cleanly; warnings are
-        # docstring fidelity issues, not correctness errors.
-        run: uv run --group docs mkdocs build
+        run: uv run --group docs mkdocs build --strict
       - name: Upload artifact
         if: github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v3

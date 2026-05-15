@@ -113,6 +113,30 @@ def test_wosten_basic_invariants() -> None:
     assert -10 <= w.l <= 10  # Wösten's logistic bound
 
 
+def test_saxton_rawls_density_factor_increases_bulk_density() -> None:
+    """Saxton-Rawls 2006 Eq. 6-7: DF > 1 compacts the soil."""
+    normal = saxton_rawls(65, 10, 2.5)
+    compacted = saxton_rawls(65, 10, 2.5, density_factor=1.10)
+    assert compacted.bulk_density == pytest.approx(
+        normal.bulk_density * 1.10, rel=1e-6
+    )
+    # Compaction reduces porosity → lower saturation.
+    assert compacted.saturation < normal.saturation
+    # Field capacity moves slightly under compaction (Eq. 8).
+    assert compacted.field_capacity <= normal.field_capacity
+    # Wilting point is unaffected by compaction in Saxton-Rawls.
+    assert compacted.wilting_point == pytest.approx(normal.wilting_point)
+
+
+def test_saxton_rawls_default_density_factor_matches_normal() -> None:
+    """density_factor=1.0 (default) must reproduce the original regression."""
+    explicit = saxton_rawls(65, 10, 2.5, density_factor=1.0)
+    default = saxton_rawls(65, 10, 2.5)
+    assert explicit.bulk_density == pytest.approx(default.bulk_density)
+    assert explicit.saturation == pytest.approx(default.saturation)
+    assert explicit.field_capacity == pytest.approx(default.field_capacity)
+
+
 def test_wosten_topsoil_vs_subsoil_differ() -> None:
     """The topsoil flag must materially change the prediction."""
     top = wosten(60, 30, 10, organic_matter=2.5, bulk_density=1.4, topsoil=True)

@@ -104,11 +104,18 @@ def test_convert_broadcasting() -> None:
     assert s.shape == (2,)
 
 
-def test_convert_kachinsky_unsupported_raises() -> None:
-    """KACHINSKY isn't a particle-size standard in the table."""
-    with pytest.raises(InvalidInputError, match="Unknown source"):
+def test_convert_kachinsky_raises_with_specific_message() -> None:
+    """KACHINSKY's < 0.01 mm physical-clay axis is fundamentally
+    incompatible with the sand-silt cutoff conversion model; the error
+    should explain why instead of just saying 'Unknown standard'."""
+    with pytest.raises(InvalidInputError, match=r"physical clay"):
         convert(60, 30, 10, source="KACHINSKY", target="USDA")
-    with pytest.raises(InvalidInputError, match="Unknown target"):
+    with pytest.raises(InvalidInputError, match=r"physical clay"):
+        convert(60, 30, 10, source="USDA", target="KACHINSKY")
+
+
+def test_convert_unknown_standard_lists_known() -> None:
+    with pytest.raises(InvalidInputError, match=r"Unknown target standard"):
         convert(60, 30, 10, source="USDA", target="GEPPA")
 
 

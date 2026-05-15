@@ -15,6 +15,26 @@ space within each source fraction. This is the simplest reasonable
 model and is widely used when only three-point textural data is
 available; for higher accuracy, supply a full sieve PSD and call
 :func:`interpolate_psd` directly.
+
+Supported standards (sand-silt cutoff):
+
+============== ==================
+``USDA``       0.05 mm
+``FAO``        0.05 mm
+``ISSS``       0.02 mm
+``INTERNATIONAL`` 0.02 mm
+``KA5``        0.063 mm
+============== ==================
+
+**Kachinsky is not convertible from / to this set.** The Russian
+Kachinsky classification (Качинский 1965) keys on *physical clay* —
+the mass fraction of particles < 0.01 mm. That cutoff combines what
+USDA / ISSS / KA5 split between clay (< 0.002 mm) and the fine half of
+silt, so a single sand-silt cutoff move is insufficient — you'd need a
+full sieve PSD that resolves the 0.002-0.01 mm range. Use
+:func:`interpolate_psd` directly with explicit sieve data if you need
+to derive a Kachinsky physical-clay value, then classify with
+``pedotri.classify(value, "KACHINSKY")``.
 """
 
 from __future__ import annotations
@@ -79,14 +99,8 @@ def convert(
         generally differs from the input by a percent or two, reflecting
         the limitations of a single log-linear interior model.
     """
-    if source not in SAND_SILT_CUTOFF_MM:
-        raise InvalidInputError(
-            f"Unknown source standard {source!r}. Known: {sorted(SAND_SILT_CUTOFF_MM)!r}."
-        )
-    if target not in SAND_SILT_CUTOFF_MM:
-        raise InvalidInputError(
-            f"Unknown target standard {target!r}. Known: {sorted(SAND_SILT_CUTOFF_MM)!r}."
-        )
+    _validate_standard(source, role="source")
+    _validate_standard(target, role="target")
 
     s = np.atleast_1d(np.asarray(sand, dtype=np.float64))
     si = np.atleast_1d(np.asarray(silt, dtype=np.float64))
@@ -176,6 +190,31 @@ def interpolate_psd(
     log_sizes = np.log10(sizes)
     log_target = math.log10(target_size_mm)
     return float(np.interp(log_target, log_sizes, passing))
+
+
+_NON_TRIANGLE_STANDARDS: dict[str, str] = {
+    "KACHINSKY": (
+        "KACHINSKY uses physical clay (< 0.01 mm) rather than a sand-silt "
+        "cutoff, so it cannot be converted via sand/silt/clay re-binning. "
+        "Use a full sieve PSD with interpolate_psd() to derive a Kachinsky "
+        "physical-clay value directly."
+    ),
+}
+
+
+def _validate_standard(standard: str, *, role: str) -> None:
+    """Raise a useful error when the user picks an unsupported standard."""
+    if standard in SAND_SILT_CUTOFF_MM:
+        return
+    if standard.upper() in _NON_TRIANGLE_STANDARDS:
+        raise InvalidInputError(
+            f"{role} standard {standard!r} is not convertible: "
+            f"{_NON_TRIANGLE_STANDARDS[standard.upper()]}"
+        )
+    raise InvalidInputError(
+        f"Unknown {role} standard {standard!r}. "
+        f"Known: {sorted(SAND_SILT_CUTOFF_MM)!r}."
+    )
 
 
 def _validate_fractions(sand: FloatArray, silt: FloatArray, clay: FloatArray) -> None:

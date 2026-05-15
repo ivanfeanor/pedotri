@@ -169,33 +169,34 @@ def classify(
 
         pedotri.classify(70, classification="USDA", clay=20)
 
-    Args:
-        *fractions_then_classification: Positional arguments. The last
-            argument is the classification key or :class:`Classification`
-            instance (unless given as a keyword); preceding arguments are
-            fraction percentages in axis order.
-        classification: Classification key (e.g. ``"USDA"``) or instance.
-            Required (either positional or keyword).
-        locale: When provided, return localized class names rather than
-            class keys. Falls back through the locale chain (e.g.
-            ``fr-FR`` → ``fr`` → ``en``).
-        detailed: When ``True``, return :class:`ClassifyResult` instances
-            with name, group, parent, and signed distance-to-boundary.
-        **axis_fractions: Per-axis fraction percentages by axis name
-            (e.g. ``sand=70, clay=20`` or ``physical_clay=10``).
+    The argument shapes are documented through the overload signatures
+    above. In short:
 
-    Returns:
-        - Scalar input: a class key string (or localized name, or
-          :class:`ClassifyResult`), or ``None`` if the point is outside
-          every class.
-        - Array input: a list of the above, one per input point.
+    - **fraction values** — one positional argument per axis of the
+      chosen classification, in axis order. Each value is either a
+      scalar percentage in [0, 100] or an array-like of percentages.
+      Fractions may also be passed by axis name as keyword arguments
+      (``sand=...``, ``clay=...``, ``physical_clay=...``).
+    - **classification** — last positional argument, or the
+      ``classification=`` keyword. May be a classification key string
+      (e.g. ``"USDA"``) or a :class:`Classification` instance.
+    - **locale** — optional locale tag. When provided, class names
+      are localized via the fallback chain (``fr-FR`` → ``fr`` →
+      ``en``); when omitted, results use the stable class keys.
+    - **detailed** — when ``True``, returns
+      :class:`ClassifyResult` objects with name, group, parent, and
+      signed distance-to-boundary rather than bare strings.
 
-    Raises:
-        InvalidInputError: If fraction arrays have mismatched shapes, or
-            contain NaN, or are outside the [0, 100] interval, or the
-            wrong number of fractions was provided.
-        UnknownClassificationError: If ``classification`` is a string
-            that is not registered.
+    Returns the matched class key (or localized name, or
+    :class:`ClassifyResult`) for scalar input, or a list of those
+    values for array-like input. ``None`` is returned for any point
+    that lies outside every class polygon / interval.
+
+    Raises :class:`InvalidInputError` if fraction arrays have
+    mismatched shapes or contain NaN / out-of-range values, or if the
+    wrong number of fractions was provided.
+    Raises :class:`UnknownClassificationError` if ``classification``
+    is a string that is not registered.
     """
     classification = kwargs.pop("classification", None)
     locale: Locale | None = kwargs.pop("locale", None)

@@ -64,6 +64,8 @@ def saxton_rawls(
     sand: float | int,
     clay: float | int,
     organic_matter: float | int = ...,
+    *,
+    density_factor: float = ...,
 ) -> SaxtonRawlsResult: ...
 
 
@@ -72,6 +74,8 @@ def saxton_rawls(
     sand: ArrayLike,
     clay: ArrayLike,
     organic_matter: ArrayLike | float | int = ...,
+    *,
+    density_factor: float = ...,
 ) -> list[SaxtonRawlsResult]: ...
 
 
@@ -79,6 +83,8 @@ def saxton_rawls(
     sand: ScalarOrArrayLike,
     clay: ScalarOrArrayLike,
     organic_matter: ScalarOrArrayLike = 1.0,
+    *,
+    density_factor: float = 1.0,
 ) -> SaxtonRawlsResult | list[SaxtonRawlsResult]:
     """Compute soil hydraulic properties from texture and organic matter.
 
@@ -87,6 +93,13 @@ def saxton_rawls(
         clay: Percent clay, [0, 100]. Scalar or array-like.
         organic_matter: Percent organic matter (mass), [0, 100]. Default
             1.0 % which is typical for agricultural mineral soils.
+        density_factor: Compaction-adjustment multiplier on the
+            regression's normal bulk density (Saxton & Rawls 2006,
+            Eq. 6-7). Default ``1.0`` matches the original regression
+            (no compaction). Values > 1.0 model compacted soils:
+            saturation and field capacity are reduced via the paper's
+            density correction. Wilting point is unaffected per the
+            paper. Reasonable range is ``[0.9, 1.3]``.
 
     Returns:
         A :class:`SaxtonRawlsResult` for scalar inputs, or a list of
@@ -133,10 +146,16 @@ def saxton_rawls(
     theta_s33 = theta_s33t + (0.636 * theta_s33t - 0.107)
 
     # --- θ_s: saturation, with sand-only adjustment for coarse soils ---
-    theta_s = theta_33 + theta_s33 - 0.097 * s + 0.043
+    theta_s_normal = theta_33 + theta_s33 - 0.097 * s + 0.043
 
     # --- Bulk density (normal) from saturation ---
-    bulk_density = (1.0 - theta_s) * 2.65
+    bulk_density_normal = (1.0 - theta_s_normal) * 2.65
+
+    # --- Apply density-factor compaction correction (Eq. 6-8) ---
+    bulk_density = bulk_density_normal * density_factor
+    theta_s = 1.0 - bulk_density / 2.65
+    # θ_33 shifts proportionally to the saturation loss (Eq. 8).
+    theta_33 = theta_33 - 0.2 * (theta_s_normal - theta_s)
 
     # --- Saturated hydraulic conductivity K_s (mm/h) ---
     # B is the slope of the moisture-tension curve in log-log space
